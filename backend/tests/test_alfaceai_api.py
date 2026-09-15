@@ -4,7 +4,7 @@ import uuid
 import pytest
 import requests
 
-BASE_URL = "https://lettuce-guard.preview.emergentagent.com"
+BASE_URL = "http://127.0.0.1:8000"
 API = f"{BASE_URL}/api"
 
 DEMO_EMAIL = "demo@estufa.com"
