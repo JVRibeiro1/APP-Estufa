@@ -1,0 +1,1 @@
+"""AlfaceAI backend application package."""
