@@ -25,8 +25,8 @@ const HERO =
 
 export default function Login() {
   const { signIn } = useAuth();
-  const [email, setEmail] = useState("demo@estufa.com");
-  const [password, setPassword] = useState("demo1234");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -61,13 +61,13 @@ export default function Login() {
           <View style={styles.hero}>
             <Image
               source={HERO}
-              style={StyleSheet.absoluteFillObject}
+              style={StyleSheet.absoluteFill}
               contentFit="cover"
               transition={250}
             />
             <LinearGradient
               colors={["rgba(10,76,54,0.15)", "rgba(255,255,255,0)", colors.surface]}
-              style={StyleSheet.absoluteFillObject}
+              style={StyleSheet.absoluteFill}
             />
             <View style={styles.heroContent}>
               <View style={styles.logoPill}>
@@ -142,17 +142,6 @@ export default function Login() {
                 <Text style={styles.btnText}>Entrar</Text>
               )}
             </Pressable>
-
-            <View style={styles.hintBox}>
-              <Ionicons
-                name="information-circle-outline"
-                size={16}
-                color={colors.onSurfaceSecondary}
-              />
-              <Text style={styles.hintText}>
-                Demo: demo@estufa.com / demo1234
-              </Text>
-            </View>
           </View>
         </ScrollView>
       </TouchableWithoutFeedback>

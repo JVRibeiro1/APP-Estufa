@@ -32,7 +32,7 @@ type Metric = {
 
 const METRICS: Metric[] = [
   {
-    key: "temperature",
+    key: "Temperatura",
     label: "Temperatura",
     unit: "°C",
     icon: "thermometer-outline",
@@ -40,43 +40,39 @@ const METRICS: Metric[] = [
     ideal: [18, 25],
   },
   {
-    key: "humidity",
+    key: "Umidade",
     label: "Umidade do Ar",
     unit: "%",
     icon: "water-outline",
     tint: "#2E7CD6",
     ideal: [55, 75],
   },
-  {
-    key: "soil_moisture",
-    label: "Umidade Solo",
-    unit: "%",
-    icon: "leaf-outline",
-    tint: "#158348",
-    ideal: [50, 70],
-  },
-  {
-    key: "light",
-    label: "Luminosidade",
-    unit: "lux",
-    icon: "sunny-outline",
-    tint: "#D97706",
-    ideal: [500, 900],
-  },
-  {
-    key: "co2",
-    label: "CO₂",
-    unit: "ppm",
-    icon: "cloud-outline",
-    tint: "#6B7A72",
-    ideal: [380, 500],
-  },
 ];
 
-function statusOf(v: number, ideal: [number, number]) {
+function statusOf(v: number | undefined | null, ideal: [number, number]) {
+  if (v === undefined || v === null) return { label: "—", color: colors.muted };
   if (v < ideal[0]) return { label: "Baixo", color: colors.warning };
   if (v > ideal[1]) return { label: "Alto", color: colors.error };
   return { label: "Ideal", color: colors.success };
+}
+
+function formatFullDateTime(iso: string) {
+  try {
+    const d = new Date(iso);
+    const dateStr = d.toLocaleDateString("pt-BR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+    const timeStr = d.toLocaleTimeString("pt-BR", {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    });
+    return `${dateStr} às ${timeStr}`;
+  } catch {
+    return "—";
+  }
 }
 
 function formatTime(iso: string) {
@@ -102,14 +98,18 @@ export default function Dashboard() {
 
   const load = useCallback(async () => {
     try {
-      const [r, alerts, count] = await Promise.all([
-        apiFetch<SensorReading | null>("/sensors/latest"),
-        apiFetch<Alert[]>("/alerts"),
-        apiFetch<{ count: number }>("/alerts/unread-count"),
-      ]);
+      const r = await apiFetch<SensorReading | null>("/sensors/latest");
       setReading(r);
-      setRecent(alerts.slice(0, 3));
-      setUnread(count.count);
+
+      try {
+        const alerts = await apiFetch<Alert[]>("/alerts");
+        const count = await apiFetch<{ count: number }>("/alerts/unread-count");
+        setRecent(alerts.slice(0, 3));
+        setUnread(count.count);
+      } catch {
+        setRecent([]);
+        setUnread(0);
+      }
     } catch (e) {
       console.log("load error", e);
     } finally {
@@ -148,7 +148,7 @@ export default function Dashboard() {
         <View style={styles.header}>
           <View>
             <Text style={styles.hello}>Olá,</Text>
-            <Text style={styles.name}>{user?.name || "Produtor"}</Text>
+            <Text style={styles.name}>{user?.Nome || "Produtor"}</Text>
           </View>
           <Pressable
             testID="dashboard-alerts-button"
@@ -172,12 +172,12 @@ export default function Dashboard() {
         <View style={styles.heroCard}>
           <Image
             source={HERO_BG}
-            style={StyleSheet.absoluteFillObject}
+            style={StyleSheet.absoluteFill}
             contentFit="cover"
           />
           <LinearGradient
             colors={["rgba(10,76,54,0.55)", "rgba(10,76,54,0.85)"]}
-            style={StyleSheet.absoluteFillObject}
+            style={StyleSheet.absoluteFill}
           />
           <View style={styles.heroInner}>
             <View style={styles.heroTopRow}>
@@ -206,7 +206,7 @@ export default function Dashboard() {
                 </Text>
               </View>
               <Text style={styles.heroTime}>
-                {reading ? `atualizado ${formatTime(reading.timestamp)}` : ""}
+                {reading ? `atualizado ${formatTime(reading.DataHoraEnvio)}` : ""}
               </Text>
             </View>
             <Text style={styles.heroTitle}>Estufa Alface</Text>
@@ -222,9 +222,23 @@ export default function Dashboard() {
         <View style={styles.sectionRow}>
           <Text style={styles.sectionTitle}>Sensores</Text>
           <Text style={styles.sectionHint}>
-            {reading ? `há ${timeAgo(reading.timestamp)}` : "—"}
+            {reading ? `há ${timeAgo(reading.DataHoraEnvio)}` : "—"}
           </Text>
         </View>
+
+        {/* Card do Último Envio do Sensor */}
+        {reading && (
+          <View style={styles.lastSendCard}>
+            <Ionicons name="time-outline" size={18} color={colors.brandPrimary} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.lastSendLabel}>Último Envio de Telemetria</Text>
+              <Text style={styles.lastSendValue}>
+                {formatFullDateTime(reading.DataHoraEnvio)}
+              </Text>
+            </View>
+            <Text style={styles.deviceIdBadge}>{reading.DeviceId || "ESP32"}</Text>
+          </View>
+        )}
 
         {loading ? (
           <View style={{ padding: spacing.xl }}>
@@ -233,7 +247,7 @@ export default function Dashboard() {
         ) : reading ? (
           <View style={styles.grid}>
             {METRICS.map((m) => {
-              const v = reading[m.key] as number;
+              const v = reading[m.key] as number | undefined | null;
               const s = statusOf(v, m.ideal);
               return (
                 <View
@@ -252,7 +266,7 @@ export default function Dashboard() {
                   <Text style={styles.metricLabel}>{m.label}</Text>
                   <View style={styles.metricValueRow}>
                     <Text style={styles.metricValue}>
-                      {typeof v === "number" ? v.toFixed(m.key === "co2" || m.key === "light" ? 0 : 1) : "—"}
+                      {typeof v === "number" ? v.toFixed(1) : "—"}
                     </Text>
                     <Text style={styles.metricUnit}>{m.unit}</Text>
                   </View>
@@ -444,6 +458,35 @@ const styles = StyleSheet.create({
     letterSpacing: -0.2,
   },
   sectionHint: { fontSize: 12, color: colors.muted },
+  lastSendCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginHorizontal: spacing.xl,
+    marginBottom: spacing.md,
+    padding: spacing.md,
+    backgroundColor: colors.surfaceSecondary,
+    borderRadius: radius.md,
+    gap: spacing.sm,
+  },
+  lastSendLabel: {
+    fontSize: 11,
+    color: colors.muted,
+  },
+  lastSendValue: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: colors.onSurface,
+    marginTop: 2,
+  },
+  deviceIdBadge: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: colors.brandPrimary,
+    backgroundColor: colors.brandTertiary,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: radius.pill,
+  },
   link: { color: colors.brandPrimary, fontSize: 13, fontWeight: "600" },
   grid: {
     flexDirection: "row",

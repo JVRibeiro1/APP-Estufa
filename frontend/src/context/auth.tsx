@@ -17,7 +17,7 @@ type AuthCtx = {
   user: User | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, name?: string) => Promise<void>;
+  signUp: (email: string, password: string, nome?: string) => Promise<void>;
   signOut: () => Promise<void>;
 };
 
@@ -54,10 +54,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await setToken(r.access_token);
         setUser(r.user);
       },
-      signUp: async (email, password, name) => {
+      signUp: async (email, password, nome) => {
         const r = await apiFetch<AuthResponse>("/auth/register", {
           method: "POST",
-          body: JSON.stringify({ email, password, name }),
+          body: JSON.stringify({ email, password, nome }), // Corrigido de 'name' para 'nome'
         });
         await setToken(r.access_token);
         setUser(r.user);

@@ -84,13 +84,13 @@ export default function AlertDetail() {
           {imgSrc ? (
             <Image
               source={imgSrc}
-              style={StyleSheet.absoluteFillObject}
+              style={StyleSheet.absoluteFill}
               contentFit="cover"
             />
           ) : (
             <View
               style={[
-                StyleSheet.absoluteFillObject,
+                StyleSheet.absoluteFill,
                 { backgroundColor: colors.surfaceTertiary },
               ]}
             />
@@ -101,7 +101,7 @@ export default function AlertDetail() {
               "rgba(0,0,0,0.05)",
               "rgba(0,0,0,0.55)",
             ]}
-            style={StyleSheet.absoluteFillObject}
+            style={StyleSheet.absoluteFill}
           />
           <SafeAreaView edges={["top"]} style={styles.heroSafe}>
             <View style={styles.heroTop}>
