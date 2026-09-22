@@ -6,6 +6,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { StatusBar } from "expo-status-bar";
 
+import { useNotifications } from "@/src/hooks/useNotifications";
 import { useIconFonts } from "@/src/hooks/use-icon-fonts";
 import { AuthProvider, useAuth } from "@/src/context/auth";
 import { colors } from "@/src/theme";
@@ -19,14 +20,17 @@ function AuthGate() {
   const segments = useSegments();
   const router = useRouter();
 
+  // Inicializa o registro de notificações push
+  useNotifications();
+
   useEffect(() => {
     if (loading) return;
     const inAuthGroup = segments[0] === "(auth)";
-    const inAppGroup = segments[0] === "(app)";
+    const isRootPath = !segments[0];
 
     if (!user && !inAuthGroup) {
       router.replace("/(auth)/login");
-    } else if (user && (inAuthGroup || segments.length === 0)) {
+    } else if (user && (inAuthGroup || isRootPath)) {
       router.replace("/(app)/dashboard");
     }
   }, [user, loading, segments]);

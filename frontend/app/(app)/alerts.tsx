@@ -18,6 +18,7 @@ import { colors, spacing, radius } from "@/src/theme";
 
 type Filter = "all" | "unread";
 
+// IMPORTANTE: Precisa ser 'export default function'
 export default function AlertsScreen() {
   const router = useRouter();
   const [items, setItems] = useState<Alert[]>([]);
@@ -28,7 +29,7 @@ export default function AlertsScreen() {
   const load = useCallback(async () => {
     try {
       const r = await apiFetch<Alert[]>(
-        `/alerts${filter === "unread" ? "?unread_only=true" : ""}`
+        `/vision/alerts${filter === "unread" ? "?unread_only=true" : ""}`
       );
       setItems(r);
     } catch (e) {
@@ -228,14 +229,18 @@ function SegBtn({
 }
 
 function timeAgo(iso: string) {
-  const d = new Date(iso).getTime();
-  const diff = Math.max(0, Date.now() - d);
-  const min = Math.round(diff / 60000);
-  if (min < 1) return "agora";
-  if (min < 60) return `há ${min} min`;
-  const h = Math.round(min / 60);
-  if (h < 24) return `há ${h} h`;
-  return `há ${Math.round(h / 24)} d`;
+  try {
+    const d = new Date(iso).getTime();
+    const diff = Math.max(0, Date.now() - d);
+    const min = Math.round(diff / 60000);
+    if (min < 1) return "agora";
+    if (min < 60) return `há ${min} min`;
+    const h = Math.round(min / 60);
+    if (h < 24) return `há ${h} h`;
+    return `há ${Math.round(h / 24)} d`;
+  } catch {
+    return "";
+  }
 }
 
 const styles = StyleSheet.create({

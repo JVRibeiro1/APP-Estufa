@@ -1,6 +1,5 @@
 from datetime import datetime
 from typing import Optional
-
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
@@ -47,3 +46,38 @@ class SensorReadingOut(BaseModel):
     Umidade: Optional[float]
     Luminosidade: Optional[int]
     DataHoraEnvio: datetime
+
+
+# --- Novos Schemas para Visão Computacional / IA ---
+
+class ProbabilidadesSchema(BaseModel):
+    bacteriano: float
+    fungico: float
+    saudavel: float
+
+
+class InferencePayload(BaseModel):
+    classe: str
+    classe_exibicao: str
+    confianca: float
+    probabilidades: ProbabilidadesSchema
+    patogeno_detectado: bool
+    alerta: bool
+    tempo_inferencia_ms: float
+    detectado_em: datetime
+    modelo_versao: str
+    bbox_x: Optional[float] = None
+    bbox_y: Optional[float] = None
+    bbox_w: Optional[float] = None
+    bbox_h: Optional[float] = None
+    heatmap_base64: Optional[str] = None
+    imagem_blob: Optional[str] = None
+    estufa_id: Optional[int] = 1
+
+
+class DetectionResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    alerta_gerado: bool
+    mensagem: str

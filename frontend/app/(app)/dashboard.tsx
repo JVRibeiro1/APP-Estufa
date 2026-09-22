@@ -97,26 +97,26 @@ export default function Dashboard() {
   const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async () => {
-    try {
-      const r = await apiFetch<SensorReading | null>("/sensors/latest");
-      setReading(r);
+  try {
+    const r = await apiFetch<SensorReading | null>("/sensors/latest");
+    setReading(r);
 
-      try {
-        const alerts = await apiFetch<Alert[]>("/alerts");
-        const count = await apiFetch<{ count: number }>("/alerts/unread-count");
-        setRecent(alerts.slice(0, 3));
-        setUnread(count.count);
-      } catch {
-        setRecent([]);
-        setUnread(0);
-      }
-    } catch (e) {
-      console.log("load error", e);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
+    try {
+      const alerts = await apiFetch<Alert[]>("/vision/alerts");
+      const count = await apiFetch<{ count: number }>("/vision/alerts/unread-count");
+      setRecent(alerts.slice(0, 3));
+      setUnread(count.count);
+    } catch {
+      setRecent([]);
+      setUnread(0);
     }
-  }, []);
+  } catch (e) {
+    console.log("load error", e);
+  } finally {
+    setLoading(false);
+    setRefreshing(false);
+  }
+}, []);
 
   useEffect(() => {
     load();
