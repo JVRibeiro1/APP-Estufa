@@ -3,7 +3,7 @@ import logging
 from fastapi import APIRouter, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.routers import auth, sensors, vision
+from app.routers import auth, sensors, vision, admin, estufa
 
 logging.basicConfig(
     level=logging.INFO,
@@ -22,7 +22,9 @@ async def root():
 api.include_router(auth.router)
 api.include_router(sensors.router)
 api.include_router(vision.router)
+api.include_router(estufa.router)
 app.include_router(api)
+api.include_router(admin.router)  
 
 app.add_middleware(
     CORSMiddleware,

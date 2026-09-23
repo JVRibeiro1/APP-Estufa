@@ -1,57 +1,49 @@
-from typing import Optional
-
-from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import desc, select
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from typing import List, Optional
 
 from app.database import get_db
-from app.models import SensorReadingDB
+from app.models import SensorReadingDB, UsuarioDB
 from app.schemas import SensorReadingOut
 from app.security import get_current_user
 
-from datetime import datetime
-from typing import List, Optional
-
-
-router = APIRouter(prefix="/sensors", tags=["sensors"])
-
+router = APIRouter(prefix="/sensors", tags=["Sensores"])
 
 @router.get("/latest", response_model=Optional[SensorReadingOut])
-async def latest_sensor(
-    db: AsyncSession = Depends(get_db), user=Depends(get_current_user)
-):
-    result = await db.execute(
-        select(SensorReadingDB)
-        .order_by(desc(SensorReadingDB.DataHoraEnvio))
-        .limit(1)
-    )
-    reading = result.scalars().first()
-    if not reading:
-        return None
-    return SensorReadingOut.model_validate(reading)
-
-@router.get("/history", response_model=List[SensorReadingOut])
-async def sensor_history(
-    data_inicio: datetime = Query(..., description="Data/Hora inicial no formato ISO (Ex: 2026-09-01T00:00:00)"),
-    data_fim: datetime = Query(..., description="Data/Hora final no formato ISO (Ex: 2026-09-17T23:59:59)"),
+async def get_latest_sensor_reading(
+    estufa_id: int = Query(..., description="ID da estufa para filtrar os sensores"),
     db: AsyncSession = Depends(get_db),
-    user=Depends(get_current_user),
+    current_user: UsuarioDB = Depends(get_current_user),
 ):
-    if data_inicio > data_fim:
-        raise HTTPException(
-            status_code=400, detail="A data_inicio não pode ser posterior à data_fim"
-        )
-
+    """Retorna a leitura mais recente de uma estufa específica"""
     query = (
         select(SensorReadingDB)
-        .where(
-            SensorReadingDB.DataHoraEnvio >= data_inicio,
-            SensorReadingDB.DataHoraEnvio <= data_fim,
-        )
-        .order_by(desc(SensorReadingDB.DataHoraEnvio))
+        .where(SensorReadingDB.IdEstufa == estufa_id)
+        .order_by(SensorReadingDB.DataHoraEnvio.desc())
     )
+    result = await db.execute(query)
+    reading = result.scalars().first()
 
+    # Em vez de disparar 404, retorna None/null com HTTP 200
+    return reading
+
+
+@router.get("/history", response_model=List[SensorReadingOut])
+async def get_sensor_history(
+    estufa_id: int = Query(..., description="ID da estufa para filtrar o histórico"),
+    limit: int = Query(50, le=500),
+    db: AsyncSession = Depends(get_db),
+    current_user: UsuarioDB = Depends(get_current_user),
+):
+    """Retorna o histórico de leituras de uma estufa específica"""
+    query = (
+        select(SensorReadingDB)
+        .where(SensorReadingDB.IdEstufa == estufa_id)
+        .order_by(SensorReadingDB.DataHoraEnvio.desc())
+        .limit(limit)
+    )
     result = await db.execute(query)
     readings = result.scalars().all()
 
-    return [SensorReadingOut.model_validate(r) for r in readings]
+    return readings

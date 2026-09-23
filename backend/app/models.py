@@ -1,7 +1,5 @@
 from datetime import datetime, timezone
-
-from sqlalchemy import Boolean, Column, DateTime, Float, Integer, Numeric, String
-
+from sqlalchemy import Boolean, Column, DateTime, Float, Integer, Numeric, String,ForeignKey
 from app.database import Base
 
 
@@ -12,6 +10,7 @@ class UsuarioDB(Base):
     Email = Column(String(255), unique=True, index=True, nullable=False)
     Nome = Column(String(255), nullable=True)
     SenhaHash = Column(String(255), nullable=False)
+    Adm = Column(Boolean, nullable=False, default=False)
     DataCriacao = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
@@ -19,6 +18,7 @@ class SensorReadingDB(Base):
     __tablename__ = "LeiturasSensores"
 
     Id = Column(Integer, primary_key=True, autoincrement=True)
+    IdEstufa = Column(Integer, ForeignKey("Estufas.Id"), nullable=False, default=1)  # <-- ADICIONE ESTA LINHA
     DeviceId = Column(String(50), nullable=False)
     Temperatura = Column(Numeric(5, 2), nullable=True)
     Umidade = Column(Numeric(5, 2), nullable=True)
@@ -51,3 +51,18 @@ class DeteccaoInferenciaDB(Base):
     BboxW = Column(Float, nullable=True)
     BboxH = Column(Float, nullable=True)
     HeatmapBlob = Column(String(400), nullable=True)
+
+class EstufaDB(Base):
+    __tablename__ = "Estufas"
+
+    Id = Column(Integer, primary_key=True, autoincrement=True)
+    NomeEstufa = Column(String(255), nullable=False)
+    DataCriacao = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+
+class UsuarioEstufaDB(Base):
+    __tablename__ = "UsuarioEstufa"
+
+    UsuarioId = Column(Integer, ForeignKey("Usuarios.Id"), primary_key=True)
+    EstufaId = Column(Integer, ForeignKey("Estufas.Id"), primary_key=True)
+    DataVinculo = Column(DateTime, default=lambda: datetime.now(timezone.utc))

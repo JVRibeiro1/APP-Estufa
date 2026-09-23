@@ -14,7 +14,14 @@ import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 
-import { apiFetch, SensorReading, Alert } from "@/src/api/client";
+import {
+  apiFetch,
+  SensorReading,
+  Alert,
+  Estufa,
+  fetchLatestSensors,
+  fetchMyGreenhouses,
+} from "@/src/api/client";
 import { useAuth } from "@/src/context/auth";
 import { colors, spacing, radius } from "@/src/theme";
 
@@ -90,53 +97,82 @@ function formatTime(iso: string) {
 export default function Dashboard() {
   const { user } = useAuth();
   const router = useRouter();
+
+  // Estados de Estufas
+  const [estufas, setEstufas] = useState<Estufa[]>([]);
+  const [selectedEstufa, setSelectedEstufa] = useState<Estufa | null>(null);
+
+  // Estados de Telemetria e Alertas
   const [reading, setReading] = useState<SensorReading | null>(null);
   const [unread, setUnread] = useState<number>(0);
   const [recent, setRecent] = useState<Alert[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  const load = useCallback(async () => {
-  try {
-    const r = await apiFetch<SensorReading | null>("/sensors/latest");
-    setReading(r);
+  // 1. Busca a lista de estufas com acesso do utilizador ao iniciar
+  useEffect(() => {
+    async function loadEstufas() {
+      try {
+        const list = await fetchMyGreenhouses();
+        setEstufas(list);
+        if (list.length > 0) {
+          setSelectedEstufa(list[0]);
+        } else {
+          setLoading(false);
+        }
+      } catch (err) {
+        console.log("Erro ao carregar estufas do utilizador:", err);
+        setLoading(false);
+      }
+    }
+    loadEstufas();
+  }, []);
+
+  // 2. Busca os dados dos sensores e alertas filtrados pela estufa selecionada
+  const loadSensorData = useCallback(async () => {
+    if (!selectedEstufa) return;
 
     try {
-      const alerts = await apiFetch<Alert[]>("/vision/alerts");
-      const count = await apiFetch<{ count: number }>("/vision/alerts/unread-count");
-      setRecent(alerts.slice(0, 3));
-      setUnread(count.count);
-    } catch {
-      setRecent([]);
-      setUnread(0);
+      // Requisita a última leitura usando o estufa_id selecionado
+      const r = await fetchLatestSensors(selectedEstufa.Id);
+      setReading(r);
+
+      try {
+        const alerts = await apiFetch<Alert[]>("/vision/alerts");
+        const count = await apiFetch<{ count: number }>("/vision/alerts/unread-count");
+        setRecent(alerts.slice(0, 3));
+        setUnread(count.count);
+      } catch {
+        setRecent([]);
+        setUnread(0);
+      }
+    } catch (e) {
+      console.log("Erro ao buscar sensores da estufa:", e);
+      setReading(null);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
     }
-  } catch (e) {
-    console.log("load error", e);
-  } finally {
-    setLoading(false);
-    setRefreshing(false);
-  }
-}, []);
+  }, [selectedEstufa]);
 
   useEffect(() => {
-    load();
-    const t = setInterval(load, 30000);
-    return () => clearInterval(t);
-  }, [load]);
+    if (selectedEstufa) {
+      setLoading(true);
+      loadSensorData();
+      const t = setInterval(loadSensorData, 30000);
+      return () => clearInterval(t);
+    }
+  }, [selectedEstufa, loadSensorData]);
 
   const onRefresh = () => {
     setRefreshing(true);
-    load();
+    loadSensorData();
   };
 
   const healthy = unread === 0;
 
   return (
-    <SafeAreaView
-      style={styles.safe}
-      edges={["top", "left", "right"]}
-      testID="dashboard-screen"
-    >
+    <SafeAreaView style={styles.safe} edges={["top", "left", "right"]} testID="dashboard-screen">
       <ScrollView
         contentContainerStyle={{ paddingBottom: spacing.xxxl }}
         showsVerticalScrollIndicator={false}
@@ -155,11 +191,7 @@ export default function Dashboard() {
             onPress={() => router.push("/(app)/alerts")}
             style={styles.bellBtn}
           >
-            <Ionicons
-              name="notifications-outline"
-              size={22}
-              color={colors.onSurface}
-            />
+            <Ionicons name="notifications-outline" size={22} color={colors.onSurface} />
             {unread > 0 && (
               <View style={styles.badge}>
                 <Text style={styles.badgeText}>{unread}</Text>
@@ -168,13 +200,54 @@ export default function Dashboard() {
           </Pressable>
         </View>
 
-        {/* Hero status card */}
+        {/* --- SELETOR DE ESTUFAS DO UTILIZADOR --- */}
+        <View style={styles.sectionRowHeader}>
+          <Text style={styles.sectionTitle}>Estufas Disponíveis</Text>
+        </View>
+
+        {estufas.length === 0 ? (
+          <View style={styles.emptyEstufas}>
+            <Text style={styles.emptyText}>Nenhuma estufa vinculada à sua conta.</Text>
+          </View>
+        ) : (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.estufasContainer}
+          >
+            {estufas.map((item) => {
+              const isSelected = selectedEstufa?.Id === item.Id;
+              return (
+                <Pressable
+                  key={item.Id}
+                  onPress={() => setSelectedEstufa(item)}
+                  style={[
+                    styles.estufaChip,
+                    isSelected && styles.estufaChipSelected,
+                  ]}
+                >
+                  <Ionicons
+                    name="leaf-outline"
+                    size={16}
+                    color={isSelected ? "#fff" : colors.brandPrimary}
+                  />
+                  <Text
+                    style={[
+                      styles.estufaChipText,
+                      isSelected && styles.estufaChipTextSelected,
+                    ]}
+                  >
+                    {item.NomeEstufa}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+        )}
+
+        {/* Hero status card com o Nome da Estufa Ativa */}
         <View style={styles.heroCard}>
-          <Image
-            source={HERO_BG}
-            style={StyleSheet.absoluteFill}
-            contentFit="cover"
-          />
+          <Image source={HERO_BG} style={StyleSheet.absoluteFill} contentFit="cover" />
           <LinearGradient
             colors={["rgba(10,76,54,0.55)", "rgba(10,76,54,0.85)"]}
             style={StyleSheet.absoluteFill}
@@ -209,7 +282,12 @@ export default function Dashboard() {
                 {reading ? `atualizado ${formatTime(reading.DataHoraEnvio)}` : ""}
               </Text>
             </View>
-            <Text style={styles.heroTitle}>Estufa Alface</Text>
+
+            {/* NOME DINÂMICO DA ESTUFA */}
+            <Text style={styles.heroTitle}>
+              {selectedEstufa ? selectedEstufa.NomeEstufa : "Sem Estufa"}
+            </Text>
+
             <Text style={styles.heroSubtitle}>
               {healthy
                 ? "Todos os sensores dentro do ideal."
@@ -226,7 +304,7 @@ export default function Dashboard() {
           </Text>
         </View>
 
-        {/* Card do Último Envio do Sensor */}
+        {/* Card do Último Envio de Telemetria */}
         {reading && (
           <View style={styles.lastSendCard}>
             <Ionicons name="time-outline" size={18} color={colors.brandPrimary} />
@@ -250,17 +328,8 @@ export default function Dashboard() {
               const v = reading[m.key] as number | undefined | null;
               const s = statusOf(v, m.ideal);
               return (
-                <View
-                  key={m.key}
-                  testID={`metric-${m.key}`}
-                  style={styles.metricCard}
-                >
-                  <View
-                    style={[
-                      styles.metricIconWrap,
-                      { backgroundColor: colors.brandTertiary },
-                    ]}
-                  >
+                <View key={m.key} testID={`metric-${m.key}`} style={styles.metricCard}>
+                  <View style={[styles.metricIconWrap, { backgroundColor: colors.brandTertiary }]}>
                     <Ionicons name={m.icon} size={18} color={m.tint} />
                   </View>
                   <Text style={styles.metricLabel}>{m.label}</Text>
@@ -270,15 +339,8 @@ export default function Dashboard() {
                     </Text>
                     <Text style={styles.metricUnit}>{m.unit}</Text>
                   </View>
-                  <View
-                    style={[
-                      styles.metricStatus,
-                      { backgroundColor: s.color + "22" },
-                    ]}
-                  >
-                    <View
-                      style={[styles.metricDot, { backgroundColor: s.color }]}
-                    />
+                  <View style={[styles.metricStatus, { backgroundColor: s.color + "22" }]}>
+                    <View style={[styles.metricDot, { backgroundColor: s.color }]} />
                     <Text style={[styles.metricStatusText, { color: s.color }]}>
                       {s.label}
                     </Text>
@@ -290,11 +352,11 @@ export default function Dashboard() {
         ) : (
           <View style={styles.empty}>
             <Ionicons name="cloud-offline-outline" size={32} color={colors.muted} />
-            <Text style={styles.emptyText}>Nenhum sensor conectado.</Text>
+            <Text style={styles.emptyText}>Sem dados de sensores para esta estufa.</Text>
           </View>
         )}
 
-        {/* Recent alerts */}
+        {/* Alertas Recentes */}
         <View style={styles.sectionRow}>
           <Text style={styles.sectionTitle}>Alertas Recentes</Text>
           <Pressable onPress={() => router.push("/(app)/alerts")}>
@@ -371,12 +433,7 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.md,
   },
   hello: { fontSize: 13, color: colors.muted },
-  name: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: colors.onSurface,
-    letterSpacing: -0.3,
-  },
+  name: { fontSize: 20, fontWeight: "700", color: colors.onSurface, letterSpacing: -0.3 },
   bellBtn: {
     width: 42,
     height: 42,
@@ -397,177 +454,59 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  badgeText: {
-    color: "#fff",
-    fontSize: 10,
-    fontWeight: "700",
-  },
-  heroCard: {
-    marginHorizontal: spacing.xl,
-    height: 160,
-    borderRadius: radius.lg,
-    overflow: "hidden",
-  },
-  heroInner: {
-    flex: 1,
-    padding: spacing.lg,
-    justifyContent: "space-between",
-  },
-  heroTopRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  heroStatusPill: {
+  badgeText: { color: "#fff", fontSize: 10, fontWeight: "700" },
+
+  // Estilos da Seção de Estufas
+  sectionRowHeader: { paddingHorizontal: spacing.xl, marginBottom: spacing.xs },
+  estufasContainer: { paddingHorizontal: spacing.xl, gap: spacing.sm, paddingBottom: spacing.md },
+  estufaChip: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
     borderRadius: radius.pill,
-  },
-  heroStatusText: { fontSize: 12, fontWeight: "700" },
-  heroTime: {
-    color: "#fff",
-    fontSize: 11,
-    opacity: 0.85,
-  },
-  heroTitle: {
-    color: "#fff",
-    fontSize: 22,
-    fontWeight: "700",
-    letterSpacing: -0.3,
-  },
-  heroSubtitle: {
-    color: "#fff",
-    opacity: 0.85,
-    fontSize: 13,
-  },
-  sectionRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-end",
-    paddingHorizontal: spacing.xl,
-    marginTop: spacing.xl,
-    marginBottom: spacing.md,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: colors.onSurface,
-    letterSpacing: -0.2,
-  },
-  sectionHint: { fontSize: 12, color: colors.muted },
-  lastSendCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginHorizontal: spacing.xl,
-    marginBottom: spacing.md,
-    padding: spacing.md,
     backgroundColor: colors.surfaceSecondary,
-    borderRadius: radius.md,
-    gap: spacing.sm,
+    borderWidth: 1,
+    borderColor: "transparent",
   },
-  lastSendLabel: {
-    fontSize: 11,
-    color: colors.muted,
+  estufaChipSelected: {
+    backgroundColor: colors.brandPrimary,
   },
-  lastSendValue: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: colors.onSurface,
-    marginTop: 2,
-  },
-  deviceIdBadge: {
-    fontSize: 10,
-    fontWeight: "700",
-    color: colors.brandPrimary,
-    backgroundColor: colors.brandTertiary,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: radius.pill,
-  },
+  estufaChipText: { fontSize: 13, fontWeight: "600", color: colors.onSurface },
+  estufaChipTextSelected: { color: "#fff" },
+  emptyEstufas: { paddingHorizontal: spacing.xl, marginBottom: spacing.md },
+
+  heroCard: { marginHorizontal: spacing.xl, height: 160, borderRadius: radius.lg, overflow: "hidden" },
+  heroInner: { flex: 1, padding: spacing.lg, justifyContent: "space-between" },
+  heroTopRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  heroStatusPill: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 10, paddingVertical: 5, borderRadius: radius.pill },
+  heroStatusText: { fontSize: 12, fontWeight: "700" },
+  heroTime: { color: "#fff", fontSize: 11, opacity: 0.85 },
+  heroTitle: { color: "#fff", fontSize: 22, fontWeight: "700", letterSpacing: -0.3 },
+  heroSubtitle: { color: "#fff", opacity: 0.85, fontSize: 13 },
+  sectionRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end", paddingHorizontal: spacing.xl, marginTop: spacing.xl, marginBottom: spacing.md },
+  sectionTitle: { fontSize: 16, fontWeight: "700", color: colors.onSurface, letterSpacing: -0.2 },
+  sectionHint: { fontSize: 12, color: colors.muted },
+  lastSendCard: { flexDirection: "row", alignItems: "center", marginHorizontal: spacing.xl, marginBottom: spacing.md, padding: spacing.md, backgroundColor: colors.surfaceSecondary, borderRadius: radius.md, gap: spacing.sm },
+  lastSendLabel: { fontSize: 11, color: colors.muted },
+  lastSendValue: { fontSize: 13, fontWeight: "700", color: colors.onSurface, marginTop: 2 },
+  deviceIdBadge: { fontSize: 10, fontWeight: "700", color: colors.brandPrimary, backgroundColor: colors.brandTertiary, paddingHorizontal: 8, paddingVertical: 3, borderRadius: radius.pill },
   link: { color: colors.brandPrimary, fontSize: 13, fontWeight: "600" },
-  grid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    paddingHorizontal: spacing.xl - spacing.xs,
-  },
-  metricCard: {
-    width: "50%",
-    padding: spacing.xs,
-  },
-  metricIconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: radius.md,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: spacing.sm,
-  },
-  metricLabel: {
-    fontSize: 12,
-    color: colors.muted,
-    marginBottom: 2,
-  },
-  metricValueRow: {
-    flexDirection: "row",
-    alignItems: "baseline",
-    gap: 4,
-  },
-  metricValue: {
-    fontSize: 24,
-    fontWeight: "700",
-    color: colors.onSurface,
-    letterSpacing: -0.5,
-  },
+  grid: { flexDirection: "row", flexWrap: "wrap", paddingHorizontal: spacing.xl - spacing.xs },
+  metricCard: { width: "50%", padding: spacing.xs },
+  metricIconWrap: { width: 36, height: 36, borderRadius: radius.md, alignItems: "center", justifyContent: "center", marginBottom: spacing.sm },
+  metricLabel: { fontSize: 12, color: colors.muted, marginBottom: 2 },
+  metricValueRow: { flexDirection: "row", alignItems: "baseline", gap: 4 },
+  metricValue: { fontSize: 24, fontWeight: "700", color: colors.onSurface, letterSpacing: -0.5 },
   metricUnit: { fontSize: 12, color: colors.muted, fontWeight: "500" },
-  metricStatus: {
-    marginTop: spacing.sm,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    alignSelf: "flex-start",
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: radius.pill,
-  },
+  metricStatus: { marginTop: spacing.sm, flexDirection: "row", alignItems: "center", gap: 6, alignSelf: "flex-start", paddingHorizontal: 8, paddingVertical: 3, borderRadius: radius.pill },
   metricDot: { width: 6, height: 6, borderRadius: 3 },
   metricStatusText: { fontSize: 11, fontWeight: "700" },
-  empty: {
-    marginHorizontal: spacing.xl,
-    padding: spacing.xl,
-    alignItems: "center",
-    gap: spacing.sm,
-    backgroundColor: colors.surfaceSecondary,
-    borderRadius: radius.md,
-  },
+  empty: { marginHorizontal: spacing.xl, padding: spacing.xl, alignItems: "center", gap: spacing.sm, backgroundColor: colors.surfaceSecondary, borderRadius: radius.md },
   emptyText: { color: colors.muted, fontSize: 13 },
-  alertRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginHorizontal: spacing.xl,
-    marginBottom: spacing.sm,
-    padding: spacing.md,
-    backgroundColor: colors.surfaceSecondary,
-    borderRadius: radius.md,
-    gap: spacing.md,
-  },
-  alertIconWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.md,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  alertTitle: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: colors.onSurface,
-  },
-  alertSub: {
-    marginTop: 2,
-    fontSize: 12,
-    color: colors.muted,
-  },
+  alertRow: { flexDirection: "row", alignItems: "center", marginHorizontal: spacing.xl, marginBottom: spacing.sm, padding: spacing.md, backgroundColor: colors.surfaceSecondary, borderRadius: radius.md, gap: spacing.md },
+  alertIconWrap: { width: 40, height: 40, borderRadius: radius.md, alignItems: "center", justifyContent: "center" },
+  alertTitle: { fontSize: 14, fontWeight: "700", color: colors.onSurface },
+  alertSub: { marginTop: 2, fontSize: 12, color: colors.muted },
 });

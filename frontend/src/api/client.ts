@@ -61,6 +61,8 @@ export type User = {
   Id: number;
   Email: string;
   Nome?: string | null;
+  Adm?: boolean; 
+  adm?: boolean;
 };
 
 export type AuthResponse = {
@@ -90,3 +92,20 @@ export type Alert = {
   read: boolean;
   resolved: boolean;
 };
+
+export async function fetchLatestSensors(estufaId: number): Promise<SensorReading> {
+  return await apiFetch<SensorReading>(`/sensors/latest?estufa_id=${estufaId}`);
+}
+
+export async function fetchSensorsHistory(estufaId: number, limit = 50): Promise<SensorReading[]> {
+  return await apiFetch<SensorReading[]>(`/sensors/history?estufa_id=${estufaId}&limit=${limit}`);
+}
+
+export type Estufa = {
+  Id: number;
+  NomeEstufa: string;
+};
+
+export async function fetchMyGreenhouses(): Promise<Estufa[]> {
+  return await apiFetch<Estufa[]>("/estufas/my-estufas");
+}

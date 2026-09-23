@@ -1,7 +1,7 @@
 import { Stack, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect } from "react";
-import { LogBox, View, ActivityIndicator } from "react-native";
+import { View, ActivityIndicator } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { StatusBar } from "expo-status-bar";
@@ -11,8 +11,6 @@ import { useIconFonts } from "@/src/hooks/use-icon-fonts";
 import { AuthProvider, useAuth } from "@/src/context/auth";
 import { colors } from "@/src/theme";
 
-LogBox.ignoreAllLogs(true);
-
 SplashScreen.preventAutoHideAsync();
 
 function AuthGate() {
@@ -20,7 +18,6 @@ function AuthGate() {
   const segments = useSegments();
   const router = useRouter();
 
-  // Inicializa o registro de notificações push
   useNotifications();
 
   useEffect(() => {
@@ -37,14 +34,7 @@ function AuthGate() {
 
   if (loading) {
     return (
-      <View
-        style={{
-          flex: 1,
-          alignItems: "center",
-          justifyContent: "center",
-          backgroundColor: colors.surface,
-        }}
-      >
+      <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.surface }}>
         <ActivityIndicator size="large" color={colors.brandPrimary} />
       </View>
     );

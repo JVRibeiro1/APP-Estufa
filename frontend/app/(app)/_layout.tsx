@@ -1,9 +1,12 @@
 import { Tabs } from "expo-router";
+import { useAuth } from "@/src/context/auth";
 import { Ionicons } from "@expo/vector-icons";
 import { colors } from "@/src/theme";
 import { Platform } from "react-native";
 
 export default function AppLayout() {
+  const { user } = useAuth();
+
   return (
     <Tabs
       screenOptions={{
@@ -25,11 +28,7 @@ export default function AppLayout() {
         options={{
           title: "Estufa",
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons
-              name={focused ? "leaf" : "leaf-outline"}
-              size={22}
-              color={color}
-            />
+            <Ionicons name={focused ? "leaf" : "leaf-outline"} size={22} color={color} />
           ),
         }}
       />
@@ -38,31 +37,36 @@ export default function AppLayout() {
         options={{
           title: "Alertas",
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons
-              name={focused ? "notifications" : "notifications-outline"}
-              size={22}
-              color={color}
-            />
+            <Ionicons name={focused ? "notifications" : "notifications-outline"} size={22} color={color} />
           ),
         }}
       />
+
+<Tabs.Screen
+  name="admin"
+  options={{
+    title: "Admin",
+    tabBarItemStyle: (user?.Adm || user?.adm) ? undefined : { display: "none" },
+    tabBarIcon: ({ color, focused }) => (
+      <Ionicons
+        name={focused ? "shield-checkmark" : "shield-checkmark-outline"}
+        size={22}
+        color={color}
+      />
+    ),
+  }}
+/>
+
       <Tabs.Screen
         name="settings"
         options={{
           title: "Perfil",
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons
-              name={focused ? "person-circle" : "person-circle-outline"}
-              size={24}
-              color={color}
-            />
+            <Ionicons name={focused ? "person-circle" : "person-circle-outline"} size={24} color={color} />
           ),
         }}
       />
-      <Tabs.Screen
-        name="alerts/[id]"
-        options={{ href: null }}
-      />
+      <Tabs.Screen name="alerts/[id]" options={{ href: null }} />
     </Tabs>
   );
 }

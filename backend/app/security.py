@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta, timezone
 
-from fastapi import Depends, HTTPException
+from fastapi import Depends, HTTPException, status, Depends
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
 from passlib.context import CryptContext
@@ -52,3 +52,11 @@ async def get_current_user(
     if not user:
         raise HTTPException(status_code=401, detail="Usuário não encontrado")
     return user
+
+async def require_admin(current_user: UsuarioDB = Depends(get_current_user)):
+    if not current_user.Adm:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Acesso negado: Requer privilégios de administrador."
+        )
+    return current_user

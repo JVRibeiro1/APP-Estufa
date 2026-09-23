@@ -20,6 +20,7 @@ class UserOut(BaseModel):
     Id: int
     Email: EmailStr
     Nome: Optional[str] = None
+    Adm: bool = False
 
 
 class TokenOut(BaseModel):
@@ -81,3 +82,12 @@ class DetectionResponse(BaseModel):
     id: int
     alerta_gerado: bool
     mensagem: str
+
+class UsuarioResponse(BaseModel):
+    id: int
+    email: str
+    nome: Optional[str] = None
+    adm: bool
+
+    class Config:
+        from_attributes = True
