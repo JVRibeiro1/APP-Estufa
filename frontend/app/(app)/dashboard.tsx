@@ -15,12 +15,13 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 
 import {
-  apiFetch,
   SensorReading,
   Alert,
   Estufa,
   fetchLatestSensors,
   fetchMyGreenhouses,
+  fetchAlerts,
+  fetchUnreadAlertsCount,
 } from "@/src/api/client";
 import { useAuth } from "@/src/context/auth";
 import { colors, spacing, radius } from "@/src/theme";
@@ -109,7 +110,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  // 1. Busca a lista de estufas com acesso do utilizador ao iniciar
+  // 1. Busca a lista de estufas do utilizador ao iniciar
   useEffect(() => {
     async function loadEstufas() {
       try {
@@ -128,18 +129,20 @@ export default function Dashboard() {
     loadEstufas();
   }, []);
 
-  // 2. Busca os dados dos sensores e alertas filtrados pela estufa selecionada
+  // 2. Busca leituras e alertas isolados pelo ID da estufa selecionada
   const loadSensorData = useCallback(async () => {
     if (!selectedEstufa) return;
 
     try {
-      // Requisita a última leitura usando o estufa_id selecionado
+      // Busca a última telemetria da estufa ativa
       const r = await fetchLatestSensors(selectedEstufa.Id);
       setReading(r);
 
       try {
-        const alerts = await apiFetch<Alert[]>("/vision/alerts");
-        const count = await apiFetch<{ count: number }>("/vision/alerts/unread-count");
+        // Busca os alertas e contagem específicos da estufa ativa
+        const alerts = await fetchAlerts(selectedEstufa.Id);
+        const count = await fetchUnreadAlertsCount(selectedEstufa.Id);
+
         setRecent(alerts.slice(0, 3));
         setUnread(count.count);
       } catch {
@@ -147,7 +150,7 @@ export default function Dashboard() {
         setUnread(0);
       }
     } catch (e) {
-      console.log("Erro ao buscar sensores da estufa:", e);
+      console.log("Erro ao buscar dados:", e);
       setReading(null);
     } finally {
       setLoading(false);
@@ -456,7 +459,7 @@ const styles = StyleSheet.create({
   },
   badgeText: { color: "#fff", fontSize: 10, fontWeight: "700" },
 
-  // Estilos da Seção de Estufas
+  // Estilos do Seletor de Estufas
   sectionRowHeader: { paddingHorizontal: spacing.xl, marginBottom: spacing.xs },
   estufasContainer: { paddingHorizontal: spacing.xl, gap: spacing.sm, paddingBottom: spacing.md },
   estufaChip: {

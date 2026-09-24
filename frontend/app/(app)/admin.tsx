@@ -1,213 +1,167 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
   TextInput,
-  TouchableOpacity,
+  Pressable,
+  Alert,
   StyleSheet,
   ScrollView,
-  Alert,
-  Switch,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { apiFetch } from "@/src/api/client";
+import { Ionicons } from "@expo/vector-icons";
+import { Estufa, fetchMyGreenhouses, createTeamUser } from "@/src/api/client";
 import { colors, spacing, radius } from "@/src/theme";
 
 export default function AdminScreen() {
-  // Estados para Criar Usuário
   const [nome, setNome] = useState("");
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [loadingUser, setLoadingUser] = useState(false);
+  const [isAdm, setIsAdm] = useState(false);
 
-  // Estados para Criar Estufa
-  const [nomeEstufa, setNomeEstufa] = useState("");
-  const [loadingEstufa, setLoadingEstufa] = useState(false);
+  // Lista de estufas do Adm logado
+  const [myEstufas, setMyEstufas] = useState<Estufa[]>([]);
+  // IDs das estufas selecionadas para o novo usuário
+  const [selectedEstufaIds, setSelectedEstufaIds] = useState<number[]>([]);
 
-  // Estados para Vincular Usuário à Estufa
-  const [usuarioIdVinculo, setUsuarioIdVinculo] = useState("");
-  const [estufaIdVinculo, setEstufaIdVinculo] = useState("");
-  const [loadingVinculo, setLoadingVinculo] = useState(false);
+  useEffect(() => {
+    async function loadEstufas() {
+      try {
+        const estufas = await fetchMyGreenhouses();
+        setMyEstufas(estufas);
+        // Por padrão, seleciona a primeira estufa da lista
+        if (estufas.length > 0) {
+          setSelectedEstufaIds([estufas[0].Id]);
+        }
+      } catch (err) {
+        console.error("Erro ao carregar estufas:", err);
+      }
+    }
+    loadEstufas();
+  }, []);
+
+  // Alterna a seleção da estufa (permite seleção múltipla)
+  const toggleEstufaSelection = (id: number) => {
+    if (selectedEstufaIds.includes(id)) {
+      if (selectedEstufaIds.length === 1) {
+        Alert.alert("Atenção", "O usuário precisa ter acesso a pelo menos uma estufa.");
+        return;
+      }
+      setSelectedEstufaIds(selectedEstufaIds.filter((item) => item !== id));
+    } else {
+      setSelectedEstufaIds([...selectedEstufaIds, id]);
+    }
+  };
 
   const handleCreateUser = async () => {
-    if (!email || !senha || !nome) {
-      Alert.alert("Atenção", "Preencha todos os campos do usuário.");
+    if (!nome || !email || !senha) {
+      Alert.alert("Campos obrigatórios", "Preencha todos os campos.");
       return;
     }
-    setLoadingUser(true);
+
     try {
-      await apiFetch("/admin/users", {
-        method: "POST",
-        body: JSON.stringify({ nome, email, senha, is_admin: isAdmin }),
+      await createTeamUser({
+        nome,
+        email,
+        senha,
+        estufa_ids: selectedEstufaIds,
+        adm: isAdm,
       });
-      Alert.alert("Sucesso", "Novo usuário cadastrado com sucesso!");
+
+      Alert.alert("Sucesso!", "Novo funcionário cadastrado com sucesso.");
       setNome("");
       setEmail("");
       setSenha("");
-      setIsAdmin(false);
-    } catch (e: any) {
-      Alert.alert("Erro", e.message || "Erro ao criar usuário");
-    } finally {
-      setLoadingUser(false);
-    }
-  };
-
-  const handleCreateEstufa = async () => {
-    if (!nomeEstufa) {
-      Alert.alert("Atenção", "Informe o nome da estufa.");
-      return;
-    }
-    setLoadingEstufa(true);
-    try {
-      await apiFetch("/admin/estufas", {
-        method: "POST",
-        body: JSON.stringify({ nome_estufa: nomeEstufa }),
-      });
-      Alert.alert("Sucesso", "Nova estufa cadastrada com sucesso!");
-      setNomeEstufa("");
-    } catch (e: any) {
-      Alert.alert("Erro", e.message || "Erro ao criar estufa");
-    } finally {
-      setLoadingEstufa(false);
-    }
-  };
-
-  const handleVincular = async () => {
-    if (!usuarioIdVinculo || !estufaIdVinculo) {
-      Alert.alert("Atenção", "Informe o ID do usuário e o ID da estufa.");
-      return;
-    }
-    setLoadingVinculo(true);
-    try {
-      await apiFetch("/admin/vincular-estufa", {
-        method: "POST",
-        body: JSON.stringify({
-          usuario_id: Number(usuarioIdVinculo),
-          estufa_id: Number(estufaIdVinculo),
-        }),
-      });
-      Alert.alert("Sucesso", "Usuário vinculado à estufa com sucesso!");
-      setUsuarioIdVinculo("");
-      setEstufaIdVinculo("");
-    } catch (e: any) {
-      Alert.alert("Erro", e.message || "Erro ao vincular estufa");
-    } finally {
-      setLoadingVinculo(false);
+    } catch (error: any) {
+      Alert.alert("Erro ao cadastrar", error.message);
     }
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scroll}>
-        <Text style={styles.title}>Painel do Administrador</Text>
+    <ScrollView style={styles.container}>
+      <Text style={styles.title}>Cadastrar Funcionário</Text>
 
-        {/* 1. SEÇÃO CADASTRAR USUÁRIO */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Cadastrar Novo Usuário</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Nome Completo"
-            placeholderTextColor="#888"
-            value={nome}
-            onChangeText={setNome}
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="E-mail"
-            placeholderTextColor="#888"
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="Senha"
-            placeholderTextColor="#888"
-            value={senha}
-            onChangeText={setSenha}
-            secureTextEntry
-          />
-          <View style={styles.switchRow}>
-            <Text style={styles.label}>Tornar Administrador?</Text>
-            <Switch value={isAdmin} onValueChange={setIsAdmin} />
-          </View>
-          <TouchableOpacity
-            style={styles.button}
-            onPress={handleCreateUser}
-            disabled={loadingUser}
-          >
-            <Text style={styles.buttonText}>
-              {loadingUser ? "Salvando..." : "Cadastrar Usuário"}
-            </Text>
-          </TouchableOpacity>
-        </View>
+      <Text style={styles.label}>Nome</Text>
+      <TextInput style={styles.input} value={nome} onChangeText={setNome} placeholder="Ex: Maria Silva" />
 
-        {/* 3. SEÇÃO VINCULAR USUÁRIO A ESTUFA (N:N) */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Vincular Usuário à Estufa</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="ID do Usuário (ex: 2)"
-            placeholderTextColor="#888"
-            value={usuarioIdVinculo}
-            onChangeText={setUsuarioIdVinculo}
-            keyboardType="numeric"
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="ID da Estufa (ex: 1)"
-            placeholderTextColor="#888"
-            value={estufaIdVinculo}
-            onChangeText={setEstufaIdVinculo}
-            keyboardType="numeric"
-          />
-          <TouchableOpacity
-            style={[styles.button, { backgroundColor: "#3B82F6" }]}
-            onPress={handleVincular}
-            disabled={loadingVinculo}
-          >
-            <Text style={styles.buttonText}>
-              {loadingVinculo ? "Vinculando..." : "Vincular Acesso"}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+      <Text style={styles.label}>E-mail</Text>
+      <TextInput
+        style={styles.input}
+        value={email}
+        onChangeText={setEmail}
+        keyboardType="email-address"
+        autoCapitalize="none"
+        placeholder="maria@empresa.com"
+      />
+
+      <Text style={styles.label}>Senha Temporária</Text>
+      <TextInput
+        style={styles.input}
+        value={senha}
+        onChangeText={setSenha}
+        secureTextEntry
+        placeholder="••••••••"
+      />
+
+      {/* Seleção de Estufas */}
+      <Text style={styles.label}>Vincular às Estufas:</Text>
+      <View style={styles.chipsRow}>
+        {myEstufas.map((estufa) => {
+          const selected = selectedEstufaIds.includes(estufa.Id);
+          return (
+            <Pressable
+              key={estufa.Id}
+              style={[styles.chip, selected && styles.chipSelected]}
+              onPress={() => toggleEstufaSelection(estufa.Id)}
+            >
+              <Ionicons
+                name={selected ? "checkbox" : "square-outline"}
+                size={18}
+                color={selected ? "#fff" : colors.muted}
+              />
+              <Text style={[styles.chipText, selected && styles.chipTextSelected]}>
+                {estufa.NomeEstufa}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+
+      <Pressable style={styles.btnSubmit} onPress={handleCreateUser}>
+        <Text style={styles.btnText}>Cadastrar e Vincular</Text>
+      </Pressable>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.surface },
-  scroll: { padding: spacing.lg, gap: spacing.xl },
-  title: { fontSize: 24, fontWeight: "700", color: colors.onSurface },
-  card: {
-    backgroundColor: colors.surfaceSecondary,
-    padding: spacing.lg,
-    borderRadius: radius.md,
-    gap: spacing.md,
-  },
-  cardTitle: { fontSize: 18, fontWeight: "600", color: colors.onSurface },
+  container: { flex: 1, padding: spacing.xl, backgroundColor: colors.surface },
+  title: { fontSize: 20, fontWeight: "700", marginBottom: spacing.lg, color: colors.onSurface },
+  label: { fontSize: 13, color: colors.muted, marginTop: spacing.md, marginBottom: 4 },
   input: {
-    backgroundColor: colors.surface,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 12,
-    borderRadius: radius.sm,
-    fontSize: 15,
+    backgroundColor: colors.surfaceSecondary,
+    padding: spacing.md,
+    borderRadius: radius.md,
     color: colors.onSurface,
   },
-  switchRow: {
+  chipsRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm, marginTop: spacing.xs },
+  chip: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: radius.pill,
+    backgroundColor: colors.surfaceSecondary,
   },
-  label: { fontSize: 14, color: colors.onSurface },
-  button: {
+  chipSelected: { backgroundColor: colors.brandPrimary },
+  chipText: { fontSize: 13, color: colors.onSurface },
+  chipTextSelected: { color: "#fff", fontWeight: "700" },
+  btnSubmit: {
     backgroundColor: colors.brandPrimary,
-    paddingVertical: 14,
-    borderRadius: radius.sm,
+    padding: spacing.md,
+    borderRadius: radius.md,
     alignItems: "center",
+    marginTop: spacing.xxl,
   },
-  buttonText: { color: "#FFF", fontWeight: "700", fontSize: 15 },
+  btnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
 });

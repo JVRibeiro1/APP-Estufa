@@ -12,7 +12,7 @@ class UsuarioDB(Base):
     SenhaHash = Column(String(255), nullable=False)
     Adm = Column(Boolean, nullable=False, default=False)
     DataCriacao = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-
+    PushToken = Column(String(255), nullable=True)
 
 class SensorReadingDB(Base):
     __tablename__ = "LeiturasSensores"
@@ -30,27 +30,27 @@ class SensorReadingDB(Base):
 
 
 class DeteccaoInferenciaDB(Base):
-    __tablename__ = "Deteccoes"
+    __tablename__ = "Deteccoes"  # Nome exato da sua tabela no Azure SQL
 
     Id = Column(Integer, primary_key=True, autoincrement=True)
-    EstufaId = Column(Integer, nullable=True)
-    ImagemBlob = Column(String(400), nullable=False)
-    Classe = Column(String(20), nullable=False)
-    Confianca = Column(Numeric(7, 6), nullable=False)
-    ProbBacteriano = Column(Numeric(7, 6), nullable=False)
-    ProbFungico = Column(Numeric(7, 6), nullable=False)
-    ProbSaudavel = Column(Numeric(7, 6), nullable=False)
-    PatogenoDetectado = Column(Boolean, nullable=False, default=False)
-    Alerta = Column(Boolean, nullable=False, default=False)
-    ModeloVersao = Column(String(100), nullable=False)
-    TempoInferenciaMs = Column(Numeric(9, 3), nullable=False)
-    DataHoraDeteccao = Column(DateTime, nullable=False, index=True)
-    DataHoraGravacao = Column(DateTime, nullable=False)
+    EstufaId = Column(Integer, ForeignKey("Estufas.Id"), nullable=False)
+    ImagemBlob = Column(String(500), nullable=True)
+    Classe = Column(String(100), nullable=True)
+    Confianca = Column(Numeric(5, 4), nullable=True)
+    ProbBacteriano = Column(Numeric(5, 4), nullable=True)
+    ProbFungico = Column(Numeric(5, 4), nullable=True)
+    ProbSaudavel = Column(Numeric(5, 4), nullable=True)
+    PatogenoDetectado = Column(Boolean, default=False)
+    Alerta = Column(Boolean, default=False)
+    ModeloVersao = Column(String(100), nullable=True)
+    TempoInferenciaMs = Column(Numeric(10, 3), nullable=True)
+    DataHoraDeteccao = Column(DateTime, nullable=False)
+    DataHoraGravacao = Column(DateTime, nullable=True)
     BboxX = Column(Float, nullable=True)
     BboxY = Column(Float, nullable=True)
     BboxW = Column(Float, nullable=True)
     BboxH = Column(Float, nullable=True)
-    HeatmapBlob = Column(String(400), nullable=True)
+    HeatmapBlob = Column(String(500), nullable=True)
 
 class EstufaDB(Base):
     __tablename__ = "Estufas"

@@ -1,8 +1,8 @@
-// src/hooks/useNotifications.ts
 import { useEffect, useState } from "react";
 import { Platform } from "react-native";
 import * as Notifications from "expo-notifications";
 import * as Device from "expo-device";
+import { apiFetch } from "@/src/api/client";
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -17,12 +17,23 @@ export function useNotifications() {
   const [expoPushToken, setExpoPushToken] = useState<string | null>(null);
 
   useEffect(() => {
-    registerForPushNotificationsAsync().then((token) => {
+    registerForPushNotificationsAsync().then(async (token) => {
       if (token) {
         setExpoPushToken(token);
         console.log("====================================");
         console.log("SEU EXPO PUSH TOKEN:", token);
         console.log("====================================");
+
+        // --- ENVIA O TOKEN PARA O BACKEND SAVE NO BANCO ---
+        try {
+          await apiFetch("/auth/push-token", {
+            method: "POST",
+            body: JSON.stringify({ push_token: token }),
+          });
+          console.log("Push token registrado com sucesso no Azure SQL!");
+        } catch (err) {
+          console.error("Erro ao enviar Push Token para o backend:", err);
+        }
       }
     });
   }, []);

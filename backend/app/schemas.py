@@ -42,14 +42,15 @@ class SensorReadingOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     Id: int
+    IdEstufa: int
     DeviceId: str
-    Temperatura: Optional[float]
-    Umidade: Optional[float]
-    Luminosidade: Optional[int]
+    Temperatura: Optional[float] = None
+    Umidade: Optional[float] = None
+    Luminosidade: Optional[int] = None
     DataHoraEnvio: datetime
+    TempTeto: Optional[float] = None
+    UmidTeto: Optional[float] = None
 
-
-# --- Novos Schemas para Visão Computacional / IA ---
 
 class ProbabilidadesSchema(BaseModel):
     bacteriano: float

@@ -13,12 +13,11 @@ import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useFocusEffect } from "expo-router";
 
-import { apiFetch, Alert } from "@/src/api/client";
+import { apiFetch, Alert, Estufa, fetchMyGreenhouses } from "@/src/api/client";
 import { colors, spacing, radius } from "@/src/theme";
 
 type Filter = "all" | "unread";
 
-// IMPORTANTE: Precisa ser 'export default function'
 export default function AlertsScreen() {
   const router = useRouter();
   const [items, setItems] = useState<Alert[]>([]);
@@ -26,28 +25,65 @@ export default function AlertsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [filter, setFilter] = useState<Filter>("all");
 
+  // Estados para gerenciar as estufas vinculadas ao usuário
+  const [estufas, setEstufas] = useState<Estufa[]>([]);
+  const [selectedEstufa, setSelectedEstufa] = useState<Estufa | null>(null);
+
+  // 1. Carrega as estufas do usuário ao abrir a tela
+  useEffect(() => {
+    async function initEstufas() {
+      try {
+        const list = await fetchMyGreenhouses();
+        setEstufas(list);
+        if (list.length > 0) {
+          setSelectedEstufa(list[0]);
+        } else {
+          setLoading(false);
+        }
+      } catch (err) {
+        console.log("alerts estufas load error", err);
+        setLoading(false);
+      }
+    }
+    initEstufas();
+  }, []);
+
+  // 2. Função de carregamento enviando obrigatoriamente o estufa_id
   const load = useCallback(async () => {
+    if (!selectedEstufa) return;
+
     try {
-      const r = await apiFetch<Alert[]>(
-        `/vision/alerts${filter === "unread" ? "?unread_only=true" : ""}`
-      );
+      const queryParams = new URLSearchParams({
+        estufa_id: selectedEstufa.Id.toString(),
+      });
+
+      if (filter === "unread") {
+        queryParams.append("unread_only", "true");
+      }
+
+      const r = await apiFetch<Alert[]>(`/vision/alerts?${queryParams.toString()}`);
       setItems(r);
     } catch (e) {
       console.log("alerts load error", e);
+      setItems([]);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [filter]);
+  }, [selectedEstufa, filter]);
 
   useEffect(() => {
-    load();
-  }, [load]);
+    if (selectedEstufa) {
+      load();
+    }
+  }, [selectedEstufa, load]);
 
   useFocusEffect(
     useCallback(() => {
-      load();
-    }, [load])
+      if (selectedEstufa) {
+        load();
+      }
+    }, [selectedEstufa, load])
   );
 
   return (

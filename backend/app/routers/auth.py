@@ -1,7 +1,9 @@
 from datetime import datetime, timezone
+from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select
+from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -15,6 +17,11 @@ from app.security import (
 )
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+
+# Schema para recepção do Expo Push Token do celular
+class PushTokenIn(BaseModel):
+    push_token: str
 
 
 @router.post("/register", response_model=TokenOut, status_code=201)
@@ -58,3 +65,27 @@ async def login(payload: LoginIn, db: AsyncSession = Depends(get_db)):
 @router.get("/me", response_model=UserOut)
 async def me(user: UsuarioDB = Depends(get_current_user)):
     return UserOut.model_validate(user)
+
+
+@router.post("/push-token", status_code=status.HTTP_200_OK)
+async def save_push_token(
+    payload: PushTokenIn,
+    db: AsyncSession = Depends(get_db),
+    user: UsuarioDB = Depends(get_current_user),
+):
+    """Atualiza o Expo Push Token diretamente na tabela Usuarios no SQL Server"""
+    stmt = (
+        update(UsuarioDB)
+        .where(UsuarioDB.Id == user.Id)
+        .values(PushToken=payload.push_token)
+    )
+    
+    await db.execute(stmt)
+    await db.commit()
+
+    return {
+        "status": "ok",
+        "message": "Push token atualizado com sucesso!",
+        "user_id": user.Id,
+        "push_token": payload.push_token,
+    }

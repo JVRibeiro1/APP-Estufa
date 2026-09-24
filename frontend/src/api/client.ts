@@ -109,3 +109,26 @@ export type Estufa = {
 export async function fetchMyGreenhouses(): Promise<Estufa[]> {
   return await apiFetch<Estufa[]>("/estufas/my-estufas");
 }
+
+export type CreateTeamUserPayload = {
+  email: string;
+  nome: string;
+  senha: string;
+  estufa_ids: number[];
+  adm?: boolean;
+};
+
+export async function createTeamUser(payload: CreateTeamUserPayload) {
+  return await apiFetch("/admin/team-users", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function fetchAlerts(estufaId: number): Promise<Alert[]> {
+  return await apiFetch<Alert[]>(`/vision/alerts?estufa_id=${estufaId}`);
+}
+
+export async function fetchUnreadAlertsCount(estufaId: number): Promise<{ count: number }> {
+  return await apiFetch<{ count: number }>(`/vision/alerts/unread-count?estufa_id=${estufaId}`);
+}
