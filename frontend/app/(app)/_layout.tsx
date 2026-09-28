@@ -23,6 +23,7 @@ export default function AppLayout() {
         tabBarLabelStyle: { fontSize: 11, fontWeight: "600" },
       }}
     >
+      {/* 1. Estufa (Dashboard) */}
       <Tabs.Screen
         name="dashboard"
         options={{
@@ -32,6 +33,8 @@ export default function AppLayout() {
           ),
         }}
       />
+
+      {/* 2. Alertas */}
       <Tabs.Screen
         name="alerts"
         options={{
@@ -42,21 +45,23 @@ export default function AppLayout() {
         }}
       />
 
-<Tabs.Screen
-  name="admin"
-  options={{
-    title: "Admin",
-    tabBarItemStyle: (user?.Adm || user?.adm) ? undefined : { display: "none" },
-    tabBarIcon: ({ color, focused }) => (
-      <Ionicons
-        name={focused ? "shield-checkmark" : "shield-checkmark-outline"}
-        size={22}
-        color={color}
+      {/* 3. Admin */}
+      <Tabs.Screen
+        name="admin"
+        options={{
+          title: "Admin",
+          tabBarItemStyle: (user?.Adm || user?.adm) ? undefined : { display: "none" },
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons
+              name={focused ? "shield-checkmark" : "shield-checkmark-outline"}
+              size={22}
+              color={color}
+            />
+          ),
+        }}
       />
-    ),
-  }}
-/>
 
+      {/* 4. Perfil */}
       <Tabs.Screen
         name="settings"
         options={{
@@ -66,7 +71,6 @@ export default function AppLayout() {
           ),
         }}
       />
-      <Tabs.Screen name="alerts/[id]" options={{ href: null }} />
     </Tabs>
   );
 }

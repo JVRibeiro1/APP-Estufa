@@ -17,18 +17,31 @@ import * as Haptics from "expo-haptics";
 import { apiFetch, Alert } from "@/src/api/client";
 import { colors, spacing, radius } from "@/src/theme";
 
+// Estende a interface Alert para suportar os campos opcionais e evitar erros do TypeScript
+interface ExtendedAlert extends Alert {
+  description?: string;
+  recommendations?: string[];
+}
+
 export default function AlertDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const [alert, setAlert] = useState<Alert | null>(null);
+  const [alert, setAlert] = useState<ExtendedAlert | null>(null);
   const [loading, setLoading] = useState(true);
   const [resolving, setResolving] = useState(false);
 
   const load = useCallback(async () => {
     if (!id) return;
     try {
-      const a = await apiFetch<Alert>(`/alerts/${id}`);
+      setLoading(true);
+      const a = await apiFetch<ExtendedAlert>(`/vision/alerts/${id}`);
       setAlert(a);
+
+      if (a && !a.read) {
+        apiFetch(`/vision/alerts/${id}/read`, { method: "PATCH" }).catch((err) =>
+          console.log("Erro ao marcar como lido:", err)
+        );
+      }
     } catch (e) {
       console.log("alert detail error", e);
     } finally {
@@ -45,8 +58,8 @@ export default function AlertDetail() {
     setResolving(true);
     try {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      const updated = await apiFetch<Alert>(`/alerts/${alert.id}/resolve`, {
-        method: "POST",
+      const updated = await apiFetch<ExtendedAlert>(`/vision/alerts/${alert.id}/resolve`, {
+        method: "PATCH",
       });
       setAlert(updated);
     } catch (e) {
@@ -60,7 +73,7 @@ export default function AlertDetail() {
     return (
       <SafeAreaView style={styles.safe}>
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-          <ActivityIndicator color={colors.brandPrimary} />
+          <ActivityIndicator color={colors.brandPrimary} size="large" />
         </View>
       </SafeAreaView>
     );
@@ -69,9 +82,20 @@ export default function AlertDetail() {
   const sevColor =
     alert.severity === "error" ? colors.error : colors.warning;
 
-  const imgSrc: any = alert.image_base64
-    ? { uri: `data:image/jpeg;base64,${alert.image_base64}` }
-    : alert.image_url || null;
+  const getFormattedImageSource = () => {
+    if (alert.image_base64) {
+      const base64Uri = alert.image_base64.startsWith("data:image")
+        ? alert.image_base64
+        : `data:image/jpeg;base64,${alert.image_base64}`;
+      return { uri: base64Uri };
+    }
+    if (alert.image_url) {
+      return { uri: alert.image_url };
+    }
+    return null;
+  };
+
+  const imgSrc = getFormattedImageSource();
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.surface }} testID="alert-detail-screen">
@@ -115,7 +139,7 @@ export default function AlertDetail() {
               <View style={styles.confPill}>
                 <Ionicons name="scan" size={12} color={colors.brand} />
                 <Text style={styles.confText}>
-                  {Math.round(alert.confidence * 100)}% de Precisão
+                  {Math.round((alert.confidence || 0) * 100)}% de Precisão
                 </Text>
               </View>
             </View>
@@ -138,7 +162,7 @@ export default function AlertDetail() {
           </SafeAreaView>
         </View>
 
-        {/* Content */}
+        {/* Conteúdo do Alerta */}
         <View style={styles.content}>
           <Section title="Descrição da Detecção">
             <Text style={styles.body}>
@@ -153,7 +177,7 @@ export default function AlertDetail() {
                 Nenhuma recomendação específica foi fornecida.
               </Text>
             ) : (
-              (alert.recommendations || []).map((r, i) => (
+              (alert.recommendations || []).map((r: string, i: number) => (
                 <View key={i} style={styles.recRow}>
                   <View style={styles.recDot}>
                     <Ionicons
@@ -169,12 +193,16 @@ export default function AlertDetail() {
           </Section>
 
           <Section title="Detectado em">
-            <Text style={styles.body}>{new Date(alert.created_at).toLocaleString("pt-BR")}</Text>
+            <Text style={styles.body}>
+              {alert.created_at
+                ? new Date(alert.created_at).toLocaleString("pt-BR")
+                : "Data não informada"}
+            </Text>
           </Section>
         </View>
       </ScrollView>
 
-      {/* Sticky CTA */}
+      {/* Botão Inferior de Ação */}
       <SafeAreaView edges={["bottom"]} style={styles.ctaBar}>
         <Pressable
           testID="resolve-alert-button"

@@ -51,6 +51,8 @@ class DeteccaoInferenciaDB(Base):
     BboxW = Column(Float, nullable=True)
     BboxH = Column(Float, nullable=True)
     HeatmapBlob = Column(String(500), nullable=True)
+    Lido = Column(Boolean, nullable=True, default=False)
+    Resolvido = Column(Boolean, nullable=True, default=None)
 
 class EstufaDB(Base):
     __tablename__ = "Estufas"

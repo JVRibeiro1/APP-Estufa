@@ -3,6 +3,7 @@ import { Platform } from "react-native";
 import * as Notifications from "expo-notifications";
 import * as Device from "expo-device";
 import { apiFetch } from "@/src/api/client";
+import { useAuth } from "../context/auth";
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -15,8 +16,12 @@ Notifications.setNotificationHandler({
 
 export function useNotifications() {
   const [expoPushToken, setExpoPushToken] = useState<string | null>(null);
+  const { user } = useAuth(); // Lê o estado do usuário logado
 
   useEffect(() => {
+    // SÓ EXECUTA SE O USUÁRIO ESTIVER AUTENTICADO
+    if (!user) return;
+
     registerForPushNotificationsAsync().then(async (token) => {
       if (token) {
         setExpoPushToken(token);
@@ -24,7 +29,7 @@ export function useNotifications() {
         console.log("SEU EXPO PUSH TOKEN:", token);
         console.log("====================================");
 
-        // --- ENVIA O TOKEN PARA O BACKEND SAVE NO BANCO ---
+        // --- ENVIA O TOKEN PARA O BACKEND ---
         try {
           await apiFetch("/auth/push-token", {
             method: "POST",
@@ -36,7 +41,7 @@ export function useNotifications() {
         }
       }
     });
-  }, []);
+  }, [user]);
 
   return { expoPushToken };
 }

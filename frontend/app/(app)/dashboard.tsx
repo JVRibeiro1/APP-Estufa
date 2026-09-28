@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useFocusEffect } from "expo-router";
 import {
   View,
   Text,
@@ -134,16 +135,17 @@ export default function Dashboard() {
     if (!selectedEstufa) return;
 
     try {
-      // Busca a última telemetria da estufa ativa
       const r = await fetchLatestSensors(selectedEstufa.Id);
       setReading(r);
 
       try {
-        // Busca os alertas e contagem específicos da estufa ativa
         const alerts = await fetchAlerts(selectedEstufa.Id);
         const count = await fetchUnreadAlertsCount(selectedEstufa.Id);
 
-        setRecent(alerts.slice(0, 3));
+        // Filtra apenas alertas pendentes (não resolvidos) para os recentes do Dashboard
+        const pendingAlerts = alerts.filter((a) => !a.resolved);
+        
+        setRecent(pendingAlerts.slice(0, 3));
         setUnread(count.count);
       } catch {
         setRecent([]);
@@ -158,14 +160,14 @@ export default function Dashboard() {
     }
   }, [selectedEstufa]);
 
-  useEffect(() => {
-    if (selectedEstufa) {
-      setLoading(true);
-      loadSensorData();
-      const t = setInterval(loadSensorData, 30000);
-      return () => clearInterval(t);
-    }
-  }, [selectedEstufa, loadSensorData]);
+  // Atualiza o Dashboard automaticamente ao receber o foco da navegação
+  useFocusEffect(
+    useCallback(() => {
+      if (selectedEstufa) {
+        loadSensorData();
+      }
+    }, [selectedEstufa, loadSensorData])
+  );
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -191,7 +193,7 @@ export default function Dashboard() {
           </View>
           <Pressable
             testID="dashboard-alerts-button"
-            onPress={() => router.push("/(app)/alerts")}
+            onPress={() => router.push("/(app)/alerts" as any)}
             style={styles.bellBtn}
           >
             <Ionicons name="notifications-outline" size={22} color={colors.onSurface} />
@@ -362,52 +364,54 @@ export default function Dashboard() {
         {/* Alertas Recentes */}
         <View style={styles.sectionRow}>
           <Text style={styles.sectionTitle}>Alertas Recentes</Text>
-          <Pressable onPress={() => router.push("/(app)/alerts")}>
+          <Pressable onPress={() => router.push("/(app)/alerts" as any)}>
             <Text style={styles.link}>Ver todos</Text>
           </Pressable>
         </View>
 
-        {recent.length === 0 ? (
+        {recent.length === 0 || recent.every((a) => a.resolved) ? (
           <View style={styles.empty}>
             <Ionicons name="shield-checkmark-outline" size={32} color={colors.brandPrimary} />
             <Text style={styles.emptyText}>Sua estufa está segura.</Text>
           </View>
         ) : (
-          recent.map((a) => (
-            <Pressable
-              key={a.id}
-              testID={`recent-alert-${a.id}`}
-              style={styles.alertRow}
-              onPress={() => router.push(`/(app)/alerts/${a.id}`)}
-            >
-              <View
-                style={[
-                  styles.alertIconWrap,
-                  {
-                    backgroundColor:
-                      a.severity === "error"
-                        ? colors.error + "22"
-                        : colors.warning + "22",
-                  },
-                ]}
+          recent
+            .filter((a) => !a.resolved)
+            .map((a) => (
+              <Pressable
+                key={a.id}
+                testID={`recent-alert-${a.id}`}
+                style={styles.alertRow}
+                onPress={() => router.push(`/(app)/alerts/${a.id}`)}
               >
-                <Ionicons
-                  name="alert-circle"
-                  size={20}
-                  color={a.severity === "error" ? colors.error : colors.warning}
-                />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.alertTitle} numberOfLines={1}>
-                  {a.disease}
-                </Text>
-                <Text style={styles.alertSub} numberOfLines={1}>
-                  {a.plant_zone || "Zona não informada"} · {Math.round(a.confidence * 100)}%
-                </Text>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color={colors.muted} />
-            </Pressable>
-          ))
+                <View
+                  style={[
+                    styles.alertIconWrap,
+                    {
+                      backgroundColor:
+                        a.severity === "error"
+                          ? colors.error + "22"
+                          : colors.warning + "22",
+                    },
+                  ]}
+                >
+                  <Ionicons
+                    name="alert-circle"
+                    size={20}
+                    color={a.severity === "error" ? colors.error : colors.warning}
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.alertTitle} numberOfLines={1}>
+                    {a.disease}
+                  </Text>
+                  <Text style={styles.alertSub} numberOfLines={1}>
+                    {a.plant_zone || "Zona não informada"} · {Math.round(a.confidence * 100)}%
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={colors.muted} />
+              </Pressable>
+            ))
         )}
       </ScrollView>
     </SafeAreaView>
