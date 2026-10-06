@@ -1,0 +1,168 @@
+{
+  "app_name": "AlfaceAI (Smart Greenhouse Manager)",
+  "personality": "1 iOS-Native Clean with Modern Naturalism Botanical Theme",
+  "personality_one_liner": "A clean, highly readable, and naturally calming interface that translates complex agricultural telemetry into actionable insights using deep forest greens and breathable white space.",
+  "color": {
+    "surface": "#FFFFFF",
+    "onSurface": "#1A2C21",
+    "surfaceSecondary": "#F4F7F5",
+    "onSurfaceSecondary": "#2D4A3E",
+    "surfaceTertiary": "#E7EFEA",
+    "onSurfaceTertiary": "#1A2C21",
+    "surfaceInverse": "#1A2C21",
+    "onSurfaceInverse": "#FFFFFF",
+    "brand": "#0A4C36",
+    "brandPrimary": "#158348",
+    "onBrandPrimary": "#FFFFFF",
+    "brandSecondary": "#D8E6DE",
+    "onBrandSecondary": "#0A4C36",
+    "brandTertiary": "#EAF2ED",
+    "onBrandTertiary": "#158348",
+    "success": "#158348",
+    "onSuccess": "#FFFFFF",
+    "warning": "#D97706",
+    "onWarning": "#FFFFFF",
+    "error": "#C84C31",
+    "onError": "#FFFFFF",
+    "info": "#3B4C56",
+    "onInfo": "#FFFFFF",
+    "border": "#E7EFEA",
+    "borderStrong": "#C5D6CC",
+    "divider": "#E7EFEA"
+  },
+  "typography": {
+    "displayFontFamily": "Plus Jakarta Sans",
+    "textFontFamily": "Plus Jakarta Sans",
+    "scale": {
+      "sm": 12,
+      "base": 14,
+      "lg": 16,
+      "xl": 20,
+      "2xl": 24
+    }
+  },
+  "spacing": {
+    "rule": "Generous vertical breathing room and clear grouping. Cards never flush to screen edges.",
+    "xs": 4,
+    "sm": 8,
+    "md": 12,
+    "lg": 16,
+    "xl": 24,
+    "2xl": 32,
+    "3xl": 48
+  },
+  "radius_tokens": {
+    "sm": 6,
+    "md": 12,
+    "lg": 20,
+    "pill": 999
+  },
+  "shadow_tier": 1,
+  "navigation": "bottom_tabs",
+  "icon_set": "Phosphor",
+  "glassmorphism": {
+    "enabled": true,
+    "do's": [
+      "Use on the bottom tab bar when content scrolls behind it.",
+      "Use on sticky headers over scrolling content.",
+      "Use over the greenhouse hero image for the featured status card."
+    ],
+    "dont's": [
+      "Never apply to form fields or body text regions.",
+      "Never use on dense data rows or generic cards."
+    ]
+  },
+  "platform_libraries": {
+    "glass": {
+      "ios": "expo-glass-effect",
+      "android": "expo-blur",
+      "low_end_android_fallback": "solid surfaceSecondary"
+    },
+    "image": "expo-image",
+    "blur": "expo-blur",
+    "bottom_sheet": "@gorhom/bottom-sheet",
+    "animation": "react-native-reanimated",
+    "gesture": "react-native-gesture-handler"
+  },
+  "screens": [
+    {
+      "name": "Login",
+      "purpose": "A welcoming, secure entry point for the farmer/manager.",
+      "states": {
+        "loading": "Centered spinner with a 'Verificando credenciais...' message",
+        "empty": "N/A",
+        "error": "Readable inline error for incorrect credentials"
+      },
+      "layout": "Hero image (indoor farming) covering the top 40% with a vertical gradient scrim (transparent to surface). Below the scrim, a clean single-column form (E-mail, Senha) with labels above inputs. Primary CTA 'Entrar' pinned to the bottom or bottom of the form."
+    },
+    {
+      "name": "Dashboard (Home)",
+      "purpose": "Real-time overview of the smart greenhouse environment telemetry.",
+      "states": {
+        "loading": "Skeleton loaders for the metric cards and chart area",
+        "empty": "Illustration of a greenhouse + 'Nenhum sensor conectado.'",
+        "error": "Icon + 'Falha ao carregar dados da estufa.' + Botão 'Tentar novamente'"
+      },
+      "layout": "Top section: A glassmorphic hero card displaying the overall 'Status da Safra' (Crop Status) layered over a blurred greenhouse image. Below: A 2-column grid of sensor cards (Temperatura, Umidade, Solo, Luz, CO2). Each card displays the current value, a trend arrow, and an icon inside a brandTertiary tinted rounded square."
+    },
+    {
+      "name": "Alerts (Notificações)",
+      "purpose": "Inbox for disease detection alerts triggered by the computer vision API.",
+      "states": {
+        "loading": "Skeleton list rows",
+        "empty": "Illustration of healthy lettuce + 'Sua estufa está segura. Nenhuma doença detectada.'",
+        "error": "Error reading alerts + Retry button"
+      },
+      "layout": "A scrollable list. Each row requires a minimum 56pt height. Unread alerts have a 'warning' or 'error' (Terracotta) dot. The row layout includes a leading visual (small thumbnail of the affected plant or a system icon), Title ('Possível Míldio Detectado'), Date/Time, and a chevron. A segmented control (glass background) pinned at the top to filter 'Todas' vs 'Não Lidas'."
+    },
+    {
+      "name": "Alert Detail",
+      "purpose": "Deep dive into a specific computer vision disease detection event.",
+      "states": {
+        "loading": "Centered spinner",
+        "empty": "N/A",
+        "error": "Failed to load alert details + Retry button"
+      },
+      "layout": "Top half: The actual photo taken by the camera showing the lettuce crop, with an absolute positioned 'brandTertiary' pill indicating the confidence score (e.g., '94% de Precisão'). A top-to-bottom gradient scrim is mandatory so the back button and header title are readable. Bottom half: Scrollable area with the disease name, affected zone description, and a 'Recomendações de Ação' (Action Recommendations) section. A sticky CTA at the bottom 'Marcar como Resolvido' (Mark as Resolved)."
+    },
+    {
+      "name": "Settings (Perfil)",
+      "purpose": "Manage app preferences, greenhouse API configurations, and user profile.",
+      "states": {
+        "loading": "Spinner",
+        "empty": "N/A",
+        "error": "N/A"
+      },
+      "layout": "Standard iOS-native settings layout. Section headers with subtle gray text. Rows have a leading tinted icon, label, and trailing chevron or toggle. E.g., 'Notificações Push' (toggle), 'Calibrar Sensores' (chevron)."
+    }
+  ],
+  "images": {
+    "login_hero": {
+      "url": "https://images.pexels.com/photos/37861016/pexels-photo-37861016.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+      "alt": "Indoor vertical farming setup with lush green hydroponic lettuce under LED lights"
+    },
+    "dashboard_hero_bg": {
+      "url": "https://images.pexels.com/photos/89267/pexels-photo-89267.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+      "alt": "Close-up of vibrant green lettuce rows in a well-tended agricultural field"
+    },
+    "alert_detail_sample": {
+      "url": "https://images.pexels.com/photos/3016319/pexels-photo-3016319.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+      "alt": "Crisp green lettuce plants growing in an agricultural field"
+    }
+  },
+  "instructions_to_main_agent": [
+    "Always use 'Plus Jakarta Sans' for text rendering. Respect the font weight cap of 500 max.",
+    "Implement the 'iOS-Native Clean' spacing rhythms: generous padding, clear grouping, and no dense dashboard-style clutter.",
+    "For the 'Dashboard' sensor cards, ensure they fill the horizontal space using the exact flexWrap and width calculation described in the guidelines (do not use width 48% with flex-start).",
+    "On the 'Login' and 'Alert Detail' screens, you must implement the gradient scrim pattern (Layer 0: expo-image, Layer 1: expo-linear-gradient, Layer 2: content). Text over images without a scrim is strictly prohibited.",
+    "Use Phosphor icons. Stick to a single weight (e.g., regular/outlined) consistently, except for the bottom tab bar where outlined=inactive and filled=active.",
+    "The disease alerts must use the defined 'error' (Terracotta #C84C31) or 'warning' (Ochre #D97706) colors to ensure they stand out against the botanical greens.",
+    "All strings and copy MUST be in Portuguese (Brazil) as requested by the user."
+  ],
+  "haptics": {
+    "primary_button_press": "impactLight",
+    "tab_change": "selection",
+    "alert_resolve_success": "notificationSuccess",
+    "toggle_switch": "impactLight"
+  }
+}
