@@ -284,7 +284,7 @@ export default function Dashboard() {
                 </Text>
               </View>
               <Text style={styles.heroTime}>
-                {reading ? `atualizado ${formatTime(reading.DataHoraEnvio)}` : ""}
+                {reading ? `atualizado ${formatTime(reading.DataHoraGravacao)}` : ""}
               </Text>
             </View>
 
@@ -305,7 +305,7 @@ export default function Dashboard() {
         <View style={styles.sectionRow}>
           <Text style={styles.sectionTitle}>Sensores</Text>
           <Text style={styles.sectionHint}>
-            {reading ? `há ${timeAgo(reading.DataHoraEnvio)}` : "—"}
+            {reading ? `há ${timeAgo(reading.DataHoraGravacao)}` : "—"}
           </Text>
         </View>
 
@@ -316,7 +316,7 @@ export default function Dashboard() {
             <View style={{ flex: 1 }}>
               <Text style={styles.lastSendLabel}>Último Envio de Telemetria</Text>
               <Text style={styles.lastSendValue}>
-                {formatFullDateTime(reading.DataHoraEnvio)}
+                {formatFullDateTime(reading.DataHoraGravacao)}
               </Text>
             </View>
             <Text style={styles.deviceIdBadge}>{reading.DeviceId || "ESP32"}</Text>

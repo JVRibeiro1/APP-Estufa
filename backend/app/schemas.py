@@ -48,6 +48,7 @@ class SensorReadingOut(BaseModel):
     Umidade: Optional[float] = None
     Luminosidade: Optional[int] = None
     DataHoraEnvio: datetime
+    DataHoraGravacao: datetime
     TempTeto: Optional[float] = None
     UmidTeto: Optional[float] = None
 

@@ -20,7 +20,7 @@ async def get_latest_sensor_reading(
     query = (
         select(SensorReadingDB)
         .where(SensorReadingDB.IdEstufa == estufa_id)
-        .order_by(SensorReadingDB.DataHoraEnvio.desc())
+        .order_by(SensorReadingDB.DataHoraGravacao.desc())
     )
     result = await db.execute(query)
     reading = result.scalars().first()
@@ -40,7 +40,7 @@ async def get_sensor_history(
     query = (
         select(SensorReadingDB)
         .where(SensorReadingDB.IdEstufa == estufa_id)
-        .order_by(SensorReadingDB.DataHoraEnvio.desc())
+        .order_by(SensorReadingDB.DataHoraGravacao  .desc())
         .limit(limit)
     )
     result = await db.execute(query)

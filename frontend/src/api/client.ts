@@ -78,6 +78,8 @@ export type SensorReading = {
   Umidade?: number | null;
   Luminosidade?: number | null;
   DataHoraEnvio: string;
+  DataHoraGravacao: string;
+
 };
 
 export type Alert = {
