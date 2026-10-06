@@ -18,11 +18,10 @@ class SensorReadingDB(Base):
     __tablename__ = "LeiturasSensores"
 
     Id = Column(Integer, primary_key=True, autoincrement=True)
-    IdEstufa = Column(Integer, ForeignKey("Estufas.Id"), nullable=False, default=1)  # <-- ADICIONE ESTA LINHA
+    IdEstufa = Column(Integer, ForeignKey("Estufas.Id"), nullable=False, default=1) 
     DeviceId = Column(String(50), nullable=False)
     Temperatura = Column(Numeric(5, 2), nullable=True)
     Umidade = Column(Numeric(5, 2), nullable=True)
-    Luminosidade = Column(Integer, nullable=True)
     DataHoraEnvio = Column(DateTime, nullable=False, index=True)
     DataHoraGravacao = Column(DateTime, nullable=True)
     TempTeto = Column(Numeric(5, 2), nullable=True)
@@ -30,7 +29,7 @@ class SensorReadingDB(Base):
 
 
 class DeteccaoInferenciaDB(Base):
-    __tablename__ = "Deteccoes"  # Nome exato da sua tabela no Azure SQL
+    __tablename__ = "Deteccoes"  
 
     Id = Column(Integer, primary_key=True, autoincrement=True)
     EstufaId = Column(Integer, ForeignKey("Estufas.Id"), nullable=False)
