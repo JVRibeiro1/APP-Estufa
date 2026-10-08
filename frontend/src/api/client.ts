@@ -1,7 +1,7 @@
 import { storage } from "@/src/utils/storage";
 
 // 1. Lê a variável EXPO_PUBLIC_API_URL e define o IP atual como fallback seguro
-const BASE = process.env.EXPO_PUBLIC_API_URL || "http://192.168.90.16:8000/api";
+const BASE = process.env.EXPO_PUBLIC_API_URL;
 const TOKEN_KEY = "alface_ai_token";
 
 export async function getToken(): Promise<string | null> {
