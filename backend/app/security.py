@@ -1,8 +1,9 @@
 from datetime import datetime, timedelta, timezone
 
-from fastapi import Depends, HTTPException, status, Depends
+import jwt
+from jwt.exceptions import PyJWTError
+from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from jose import JWTError, jwt
 from passlib.context import CryptContext
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -42,21 +43,30 @@ async def get_current_user(
         payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGO])
         user_id = payload.get("sub")
         if not user_id:
-            raise JWTError()
+            raise PyJWTError("Subject não encontrado")
         user_id_int = int(user_id)
-    except (JWTError, ValueError):
-        raise HTTPException(status_code=401, detail="Token inválido")
+    except (PyJWTError, ValueError):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token inválido",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
     result = await db.execute(select(UsuarioDB).where(UsuarioDB.Id == user_id_int))
     user = result.scalars().first()
     if not user:
-        raise HTTPException(status_code=401, detail="Usuário não encontrado")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Usuário não encontrado",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     return user
+
 
 async def require_admin(current_user: UsuarioDB = Depends(get_current_user)):
     if not current_user.Adm:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Acesso negado: Requer privilégios de administrador."
+            detail="Acesso negado: Requer privilégios de administrador.",
         )
     return current_user
