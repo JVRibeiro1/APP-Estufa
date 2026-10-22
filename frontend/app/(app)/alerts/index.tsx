@@ -25,39 +25,17 @@ export default function AlertsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [filter, setFilter] = useState<Filter>("all");
 
-  // Estados para gerenciar as estufas vinculadas ao usuário
   const [estufas, setEstufas] = useState<Estufa[]>([]);
   const [selectedEstufa, setSelectedEstufa] = useState<Estufa | null>(null);
 
-  // 1. Carrega as estufas do usuário ao abrir a tela
-  useEffect(() => {
-    async function initEstufas() {
-      try {
-        const list = await fetchMyGreenhouses();
-        setEstufas(list);
-        if (list.length > 0) {
-          setSelectedEstufa(list[0]);
-        } else {
-          setLoading(false);
-        }
-      } catch (err) {
-        console.log("alerts estufas load error", err);
-        setLoading(false);
-      }
-    }
-    initEstufas();
-  }, []);
-
-  // 2. Função de carregamento enviando obrigatoriamente o estufa_id
-  const load = useCallback(async () => {
-    if (!selectedEstufa) return;
-
+  // 1. Função de busca de alertas
+  const loadAlerts = async (estufaId: number, currentFilter: Filter) => {
     try {
       const queryParams = new URLSearchParams({
-        estufa_id: selectedEstufa.Id.toString(),
+        estufa_id: estufaId.toString(),
       });
 
-      if (filter === "unread") {
+      if (currentFilter === "unread") {
         queryParams.append("unread_only", "true");
       }
 
@@ -70,20 +48,45 @@ export default function AlertsScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [selectedEstufa, filter]);
+  };
 
+  // 2. Carrega estufas e o primeiro lote de alertas
+  useEffect(() => {
+    async function init() {
+      try {
+        setLoading(true);
+        const list = await fetchMyGreenhouses();
+        setEstufas(list);
+
+        if (list && list.length > 0) {
+          const firstEstufa = list[0];
+          setSelectedEstufa(firstEstufa);
+          await loadAlerts(firstEstufa.Id, filter);
+        } else {
+          setLoading(false);
+        }
+      } catch (err) {
+        console.log("alerts init error", err);
+        setLoading(false);
+      }
+    }
+    init();
+  }, []);
+
+  // 3. Recarrega alertas ao alterar o filtro
   useEffect(() => {
     if (selectedEstufa) {
-      load();
+      loadAlerts(selectedEstufa.Id, filter);
     }
-  }, [selectedEstufa, load]);
+  }, [filter]);
 
+  // 4. Recarrega ao voltar o foco para a tela
   useFocusEffect(
     useCallback(() => {
       if (selectedEstufa) {
-        load();
+        loadAlerts(selectedEstufa.Id, filter);
       }
-    }, [selectedEstufa, load])
+    }, [selectedEstufa, filter])
   );
 
   return (
@@ -94,9 +97,7 @@ export default function AlertsScreen() {
     >
       <View style={styles.header}>
         <Text style={styles.title}>Alertas</Text>
-        <Text style={styles.subtitle}>
-          Detecções da visão computacional
-        </Text>
+        <Text style={styles.subtitle}>Detecções da visão computacional</Text>
       </View>
 
       <View style={styles.segment}>
@@ -115,8 +116,8 @@ export default function AlertsScreen() {
       </View>
 
       {loading ? (
-        <View style={{ padding: spacing.xxl, alignItems: "center" }}>
-          <ActivityIndicator color={colors.brandPrimary} />
+        <View style={{ flex: 1, padding: spacing.xxl, alignItems: "center", justifyContent: "center" }}>
+          <ActivityIndicator size="large" color={colors.brandPrimary} />
         </View>
       ) : (
         <FlatList
@@ -131,7 +132,11 @@ export default function AlertsScreen() {
               refreshing={refreshing}
               onRefresh={() => {
                 setRefreshing(true);
-                load();
+                if (selectedEstufa) {
+                  loadAlerts(selectedEstufa.Id, filter);
+                } else {
+                  setRefreshing(false);
+                }
               }}
               tintColor={colors.brandPrimary}
             />
@@ -149,91 +154,96 @@ export default function AlertsScreen() {
               </Text>
             </View>
           }
-          renderItem={({ item }) => (
-            <Pressable
-              testID={`alert-row-${item.id}`}
-              style={[styles.row, item.resolved && { opacity: 0.55 }]}
-              onPress={() => router.push(`/(app)/alerts/${item.id}`)}
-            >
-              {item.image_url || item.image_base64 ? (
-                <Image
-                  source={
-                    item.image_base64
-                      ? { uri: `data:image/jpeg;base64,${item.image_base64}` }
-                      : item.image_url!
-                  }
-                  style={styles.thumb}
-                  contentFit="cover"
-                />
-              ) : (
-                <View
-                  style={[
-                    styles.thumb,
-                    {
-                      backgroundColor:
-                        item.severity === "error"
-                          ? colors.error + "22"
-                          : colors.warning + "22",
-                      alignItems: "center",
-                      justifyContent: "center",
-                    },
-                  ]}
-                >
-                  <Ionicons
-                    name="leaf"
-                    size={22}
-                    color={
-                      item.severity === "error" ? colors.error : colors.warning
-                    }
+          renderItem={({ item }) => {
+            const imageSource = item.image_url
+              ? { uri: item.image_url }
+              : item.image_base64
+              ? { uri: `data:image/jpeg;base64,${item.image_base64}` }
+              : null;
+
+            return (
+              <Pressable
+                testID={`alert-row-${item.id}`}
+                style={[styles.row, item.resolved && { opacity: 0.55 }]}
+                onPress={() => router.push(`/(app)/alerts/${item.id}`)}
+              >
+                {imageSource ? (
+                  <Image
+                    source={imageSource}
+                    style={styles.thumb}
+                    contentFit="cover"
+                    transition={200}
                   />
-                </View>
-              )}
-              <View style={{ flex: 1 }}>
-                <View style={styles.rowTop}>
-                  <Text style={styles.rowTitle} numberOfLines={1}>
-                    {item.disease}
-                  </Text>
-                  {!item.read && !item.resolved && (
-                    <View
-                      style={[
-                        styles.unreadDot,
-                        {
-                          backgroundColor:
-                            item.severity === "error"
-                              ? colors.error
-                              : colors.warning,
-                        },
-                      ]}
+                ) : (
+                  <View
+                    style={[
+                      styles.thumb,
+                      {
+                        backgroundColor:
+                          item.severity === "error"
+                            ? colors.error + "22"
+                            : colors.warning + "22",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      },
+                    ]}
+                  >
+                    <Ionicons
+                      name="leaf"
+                      size={22}
+                      color={
+                        item.severity === "error" ? colors.error : colors.warning
+                      }
                     />
-                  )}
-                </View>
-                <Text style={styles.rowSub} numberOfLines={1}>
-                  {item.plant_zone || "Zona não informada"}
-                </Text>
-                <View style={styles.rowMeta}>
-                  <View style={styles.confPill}>
-                    <Text style={styles.confText}>
-                      {Math.round(item.confidence * 100)}%
-                    </Text>
                   </View>
-                  <Text style={styles.timeText}>
-                    {timeAgo(item.created_at)}
-                  </Text>
-                  {item.resolved && (
-                    <View style={styles.resolvedPill}>
-                      <Ionicons
-                        name="checkmark"
-                        size={11}
-                        color={colors.success}
+                )}
+                <View style={{ flex: 1 }}>
+                  <View style={styles.rowTop}>
+                    <Text style={styles.rowTitle} numberOfLines={1}>
+                      {item.disease}
+                    </Text>
+                    {!item.read && !item.resolved && (
+                      <View
+                        style={[
+                          styles.unreadDot,
+                          {
+                            backgroundColor:
+                              item.severity === "error"
+                                ? colors.error
+                                : colors.warning,
+                          },
+                        ]}
                       />
-                      <Text style={styles.resolvedText}>Resolvido</Text>
+                    )}
+                  </View>
+                  <Text style={styles.rowSub} numberOfLines={1}>
+                    {item.plant_zone || "Zona não informada"}
+                  </Text>
+                  <View style={styles.rowMeta}>
+                    <View style={styles.confPill}>
+                      <Text style={styles.confText}>
+                        {Math.round(item.confidence * 100)}%
+                      </Text>
                     </View>
-                  )}
+                    <Text style={styles.timeText}>
+                      {timeAgo(item.created_at)}
+                    </Text>
+                    {item.resolved && (
+                      <View style={styles.resolvedPill}>
+                        <Ionicons
+                          name="checkmark"
+                          size={11}
+                          color={colors.success}
+                        />
+                        <Text style={styles.resolvedText}>Resolvido</Text>
+                      </View>
+                    )}
+                  </View>
                 </View>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color={colors.muted} />
-            </Pressable>
-          )}
+                <Ionicons name="chevron-forward" size={18} color={colors.muted} />
+              </Pressable>
+            );
+          }}
         />
       )}
     </SafeAreaView>

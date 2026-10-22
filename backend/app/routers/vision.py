@@ -10,6 +10,7 @@ from app.database import get_db
 from app.models import DeteccaoInferenciaDB, UsuarioDB, UsuarioEstufaDB
 from app.security import get_current_user
 from app.services.push import send_expo_push_notification
+from app.services.azure_blob import build_image_url
 
 router = APIRouter(prefix="/vision", tags=["Visão Computacional & Alertas"])
 
@@ -117,8 +118,8 @@ async def get_alerts_by_estufa(
             "confidence": float(d.Confianca) if d.Confianca is not None else 0.0,
             "severity": "error" if d.PatogenoDetectado else "warning",
             "plant_zone": f"Zona {d.EstufaId}",
-            "image_url": d.ImagemBlob if (d.ImagemBlob and d.ImagemBlob.startswith("http")) else None,
-            "image_base64": d.ImagemBlob if (d.ImagemBlob and not d.ImagemBlob.startswith("http")) else None,
+            "image_url": build_image_url(d.ImagemBlob),  
+            "image_base64": None,
             "created_at": created_at_str,
             "read": is_read,
             "resolved": is_resolved
@@ -182,8 +183,8 @@ async def get_alert_detail(
         "confidence": float(d.Confianca) if d.Confianca is not None else 0.0,
         "severity": "error" if d.PatogenoDetectado else "warning",
         "plant_zone": f"Zona {d.EstufaId}",
-        "image_url": d.ImagemBlob if (d.ImagemBlob and d.ImagemBlob.startswith("http")) else None,
-        "image_base64": d.ImagemBlob if (d.ImagemBlob and not d.ImagemBlob.startswith("http")) else None,
+        "image_url": build_image_url(d.ImagemBlob),  # <--- URL completa montada aqui
+        "image_base64": None,
         "description": f"Foi identificada a classe '{d.Classe}' com probabilidade bacteriana de {int((d.ProbBacteriano or 0)*100)}% e fúngica de {int((d.ProbFungico or 0)*100)}%.",
         "recommendations": [
             "Inspecione visualmente a área afetada na estufa.",
@@ -266,11 +267,7 @@ async def receive_detection(
     payload: DetectionIn,
     db: AsyncSession = Depends(get_db),
 ):
-    """
-    Endpoint chamado pela API/Script do YOLO11.
-    Salva a detecção no banco de dados e, se houver alerta (Alerta=True),
-    envia automaticamente o Push Notification para os celulares dos produtores.
-    """
+
     now = datetime.now(timezone.utc)
     
     nova_deteccao = DeteccaoInferenciaDB(
@@ -293,7 +290,6 @@ async def receive_detection(
     await db.commit()
     await db.refresh(nova_deteccao)
 
-    # Se for um alerta/doença, dispara a notificação no celular
     if payload.alerta:
         await notify_greenhouse_users(
             estufa_id=payload.estufa_id,
