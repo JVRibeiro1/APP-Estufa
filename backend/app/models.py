@@ -52,6 +52,9 @@ class DeteccaoInferenciaDB(Base):
     HeatmapBlob = Column(String(500), nullable=True)
     Lido = Column(Boolean, nullable=True, default=False)
     Resolvido = Column(Boolean, nullable=True, default=None)
+    ProbAlface = Column("ProbAlface", Float, nullable=True)
+    ModeloDominioVersao = Column("ModeloDominioVersao", String(100), nullable=True)
+    TempoVerificacaoMs = Column("TempoVerificacaoMs", Float, nullable=True)
 
 class EstufaDB(Base):
     __tablename__ = "Estufas"

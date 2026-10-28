@@ -28,6 +28,9 @@ class DetectionIn(BaseModel):
     alerta: bool = False
     modelo_versao: Optional[str] = "yolo11n_cls_alface.pt"
     tempo_inferencia_ms: Optional[float] = 0.0
+    prob_alface: Optional[float] = None
+    modelo_dominio_versao: Optional[str] = None
+    tempo_verificacao_ms: Optional[float] = 0.0
 
 
 # --- FUNÇÃO AUXILIAR DE DISPARO DE PUSH ---
@@ -193,7 +196,7 @@ async def get_alert_detail(
         ],
         "created_at": created_at_str,
         "read": bool(getattr(d, "Lido", True)),
-        "resolved": bool(getattr(d, "Resolvido", False))
+        "resolved": bool(getattr(d, "Resolvido", False))    
     }
 
 
@@ -252,8 +255,8 @@ async def resolve_alert(
         "confidence": float(d.Confianca) if d.Confianca is not None else 0.0,
         "severity": "error" if d.PatogenoDetectado else "warning",
         "plant_zone": f"Zona {d.EstufaId}",
-        "image_url": d.ImagemBlob if (d.ImagemBlob and d.ImagemBlob.startswith("http")) else None,
-        "image_base64": d.ImagemBlob if (d.ImagemBlob and not d.ImagemBlob.startswith("http")) else None,
+        "image_url": build_image_url(d.ImagemBlob),  
+        "image_base64": None,
         "created_at": created_at_str,
         "read": True,
         "resolved": True
@@ -262,34 +265,14 @@ async def resolve_alert(
 
 # --- ENDPOINT: RECEBE INFERÊNCIA DA IA & DISPARA O PUSH ---
 
-@router.post("/detect", status_code=status.HTTP_201_CREATED)
+@router.post("/detect", status_code=status.HTTP_200_OK)
 async def receive_detection(
     payload: DetectionIn,
     db: AsyncSession = Depends(get_db),
 ):
+    push_sent = False
 
-    now = datetime.now(timezone.utc)
-    
-    nova_deteccao = DeteccaoInferenciaDB(
-        EstufaId=payload.estufa_id,
-        ImagemBlob=payload.imagem_blob,
-        Classe=payload.classe,
-        Confianca=payload.confianca,
-        ProbBacteriano=payload.prob_bacteriano,
-        ProbFungico=payload.prob_fungico,
-        ProbSaudavel=payload.prob_saudavel,
-        PatogenoDetectado=payload.patogeno_detectado,
-        Alerta=payload.alerta,
-        ModeloVersao=payload.modelo_versao,
-        TempoInferenciaMs=payload.tempo_inferencia_ms,
-        DataHoraDeteccao=now,
-        DataHoraGravacao=now,
-    )
-
-    db.add(nova_deteccao)
-    await db.commit()
-    await db.refresh(nova_deteccao)
-
+    # Apenas dispara o push se a flag de alerta estiver True
     if payload.alerta:
         await notify_greenhouse_users(
             estufa_id=payload.estufa_id,
@@ -297,9 +280,9 @@ async def receive_detection(
             confianca=payload.confianca,
             db=db,
         )
+        push_sent = True
 
     return {
-        "message": "Detecção gravada com sucesso",
-        "id": nova_deteccao.Id,
-        "push_sent": payload.alerta,
+        "message": "Detecção processada com sucesso (sem gravação na base de dados)",
+        "push_sent": push_sent,
     }

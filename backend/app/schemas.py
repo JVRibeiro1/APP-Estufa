@@ -60,22 +60,25 @@ class ProbabilidadesSchema(BaseModel):
 
 
 class InferencePayload(BaseModel):
+    estufa_id: Optional[int] = 1
     classe: str
-    classe_exibicao: str
     confianca: float
-    probabilidades: ProbabilidadesSchema
+    imagem_blob: Optional[str] = None
+    prob_bacteriano: Optional[float] = None
+    prob_fungico: Optional[float] = None
+    prob_saudavel: Optional[float] = None
     patogeno_detectado: bool
     alerta: bool
-    tempo_inferencia_ms: float
-    detectado_em: datetime
     modelo_versao: str
-    bbox_x: Optional[float] = None
-    bbox_y: Optional[float] = None
-    bbox_w: Optional[float] = None
-    bbox_h: Optional[float] = None
-    heatmap_base64: Optional[str] = None
-    imagem_blob: Optional[str] = None
-    estufa_id: Optional[int] = 1
+    tempo_inferencia_ms: float
+
+    prob_alface: Optional[float] = None
+    modelo_dominio_versao: Optional[str] = None
+    tempo_verificacao_ms: Optional[float] = None
+
+    classe_exibicao: Optional[str] = None
+    probabilidades: Optional[ProbabilidadesSchema] = None
+    detectado_em: Optional[datetime] = None
 
 
 class DetectionResponse(BaseModel):
